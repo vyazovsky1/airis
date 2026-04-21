@@ -5,6 +5,7 @@ from pydantic import BaseModel, ValidationError
 from openai import OpenAI
 from google import genai
 from tools import kubernetes_utils, github_utils, storage_cache, context_discovery
+import tools.token_stats as token_stats
 from config import config
 
 logger = logging.getLogger(__name__)
@@ -29,8 +30,9 @@ def load_prompt(filename: str) -> str:
     with open(path, "r", encoding="utf-8") as f:
         return f.read()
 
-def run_airis_cycle(pr_number: int, workload_name: str, provider: str = "gemini", model_name: str = None, action: str = "pr", workload_root: str = None):
+def run_airis_cycle(pr_number: int, workload_name: str, provider: str = "gemini", model_name: str = None, action: str = "pr", workload_root: str = None, skip_cache: bool = False):
     logger.info(f"Starting AIRIS Cycle for PR #{pr_number}, Workload: {workload_name}, Provider: {provider}, Action: {action}")
+    token_stats.reset()
     
     # 1. Perceive Background info
     logger.info(f"Step 1/3: Fetching Pull Request diff for PR #{pr_number} from GitHub...")
@@ -47,7 +49,7 @@ def run_airis_cycle(pr_number: int, workload_name: str, provider: str = "gemini"
     # Step 0: Context Discovery (Fast-Scraper Tier)
     app_intent_summary = "No explicit intent discovered."
     if workload_root:
-        app_intent_summary = context_discovery.discover_app_context(workload_name, workload_root, provider)
+        app_intent_summary = context_discovery.discover_app_context(workload_name, workload_root, provider, skip_cache)
     else:
         logger.warning(f"No workload_root provided for '{workload_name}'. Skipping Intent Discovery.")
 
@@ -115,12 +117,16 @@ PR Diff:
                 ]
                 
                 response = client.chat.completions.create(
-                    model=model_name or config.DEFAULT_OPENAI_MODEL,
+                    model=model_name or config.OPENAI_DEFAULT_MODEL,
                     messages=messages,
                     temperature=config.TEMPERATURE
                 )
                 
                 response_text = response.choices[0].message.content
+                if response.usage:
+                    in_t, out_t = response.usage.prompt_tokens, response.usage.completion_tokens
+                    token_stats.record("thinking", in_t, out_t)
+                    logger.info(f"LLM Reasoning attempt {attempt} complete. Tokens spent: (in: {in_t}, out: {out_t} tokens)")
                 
             elif provider == "gemini":
                 gemini_key = os.environ.get("GEMINI_API_KEY")
@@ -132,10 +138,15 @@ PR Diff:
                 prompt = f"{full_system_context}\n\nPlease analyze {workload_name}. \nAllocations: {json.dumps(allocations)}\nUsage: {json.dumps(usage)}\nPVC: {json.dumps(pvc)}\nDisk: {json.dumps(disk)}"
                 
                 response = client.models.generate_content(
-                    model=model_name or config.DEFAULT_GEMINI_MODEL,
-                    contents=prompt
+                    model=model_name or config.GEMINI_DEFAULT_MODEL,
+                    contents=prompt,
+                    config={'temperature': config.TEMPERATURE}
                 )
                 response_text = response.text
+                if response.usage_metadata:
+                    in_t, out_t = response.usage_metadata.prompt_token_count, response.usage_metadata.candidates_token_count
+                    token_stats.record("thinking", in_t, out_t)
+                    logger.info(f"LLM Reasoning attempt {attempt} complete. Tokens spent: (in: {in_t}, out: {out_t} tokens)")
                 
             else:
                 raise Exception(f"Unsupported provider: {provider}")
@@ -177,3 +188,5 @@ PR Diff:
         logger.info(f"DRY-RUN action selected. Final structured payload:\n{validated_data.model_dump_json(indent=2)}")
     else:
         logger.warning(f"Action '{action}' is not implemented.")
+
+    token_stats.log_summary()
