@@ -5,6 +5,7 @@ from typing import Dict, Any, Optional
 from openai import OpenAI
 from google import genai
 from config import config
+import tools.token_stats as token_stats
 
 logger = logging.getLogger(__name__)
 
@@ -12,6 +13,11 @@ CACHE_DIR = ".data"
 
 def get_intent_cache_path(workload_name: str) -> str:
     return os.path.join(CACHE_DIR, f"{workload_name}_intent_cache.json")
+
+def load_prompt(filename: str) -> str:
+    path = os.path.join(os.path.dirname(__file__), "..", "..", "prompts", filename)
+    with open(path, "r", encoding="utf-8") as f:
+        return f.read()
 
 def scan_directory_structure(root_path: str) -> str:
     """Recursive scan of the directory structure to give the LLM a 'view' of the project."""
@@ -47,7 +53,7 @@ def sample_key_files(root_path: str) -> Dict[str, str]:
     
     return samples
 
-def discover_app_context(workload_name: str, workload_root: str, provider: str = "openai") -> str:
+def discover_app_context(workload_name: str, workload_root: str, provider: str = "openai", skip_cache: bool = False) -> str:
     """
     Main entry point for discovery. 
     1. Checks cache.
@@ -55,7 +61,7 @@ def discover_app_context(workload_name: str, workload_root: str, provider: str =
     3. Uses Fast-tier LLM to summarize intent.
     """
     cache_path = get_intent_cache_path(workload_name)
-    if os.path.exists(cache_path):
+    if os.path.exists(cache_path) and not skip_cache:
         logger.info(f"Loading cached intent summary for '{workload_name}'...")
         with open(cache_path, "r", encoding="utf-8") as f:
             return json.load(f).get("intent_summary", "No summary found in cache.")
@@ -69,43 +75,38 @@ def discover_app_context(workload_name: str, workload_root: str, provider: str =
     structure = scan_directory_structure(workload_root)
     samples = sample_key_files(workload_root)
     
-    prompt = f"""
-Analyze the following source code repository context and provide a concise 'Technical Intent Summary'.
-This summary will be used by another AI to calibrate Kubernetes resource requests (CPU/Memory/Storage).
-
-### Directory Structure:
-{structure}
-
-### Key File Samples:
-{json.dumps(samples, indent=2)}
-
-### Output Requirements:
-Provide a 1-2 paragraph summary including:
-1. **Application Purpose:** What does this service do?
-2. **Tech Stack:** What language/framework is used (e.g., Python FastAPI, JVM Spring)?
-3. **Resource Characteristics:** Is it CPU-heavy, Memory-heavy, or IO-heavy based on the code/manifests?
-4. **Usage Patterns:** Any mention of peak hours, user concurrency, or scaling needs.
-
-BE CONCISE. FOCUS ON TECHNICAL TRUTH.
-"""
+    prompt_template = load_prompt("app_discovery.txt")
+    prompt = prompt_template.format(
+        structure=structure,
+        samples=json.dumps(samples, indent=2)
+    )
 
     summary = ""
     try:
         if provider == "openai":
             client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
             response = client.chat.completions.create(
-                model=config.FAST_OPENAI_MODEL,
+                model=config.OPENAI_FAST_MODEL,
                 messages=[{"role": "user", "content": prompt}],
-                temperature=0.1
+                temperature=config.TEMPERATURE
             )
             summary = response.choices[0].message.content
+            if response.usage:
+                in_t, out_t = response.usage.prompt_tokens, response.usage.completion_tokens
+                token_stats.record("fast", in_t, out_t)
+                logger.info(f"Context Discovery LLM call complete. Tokens spent: (in: {in_t}, out: {out_t} tokens)")
         elif provider == "gemini":
             client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
             response = client.models.generate_content(
-                model=config.FAST_GEMINI_MODEL,
-                contents=prompt
+                model=config.GEMINI_FAST_MODEL,
+                contents=prompt,
+                config={'temperature': config.TEMPERATURE}
             )
             summary = response.text
+            if response.usage_metadata:
+                in_t, out_t = response.usage_metadata.prompt_token_count, response.usage_metadata.candidates_token_count
+                token_stats.record("fast", in_t, out_t)
+                logger.info(f"Context Discovery LLM call complete. Tokens spent: (in: {in_t}, out: {out_t} tokens)")
         
         # Cache the result
         with open(cache_path, "w", encoding="utf-8") as f:

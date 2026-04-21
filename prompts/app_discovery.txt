@@ -1,0 +1,17 @@
+Analyze the following source code repository context and provide a concise 'Technical Intent Summary'.
+This summary will be used by another AI to calibrate Kubernetes resource requests (CPU/Memory/Storage).
+
+### Directory Structure:
+{structure}
+
+### Key File Samples:
+{samples}
+
+### Output Requirements:
+Provide a 1-2 paragraph summary including:
+1. **Application Purpose:** What does this service do?
+2. **Tech Stack:** What language/framework is used (e.g., Python FastAPI, JVM Spring)?
+3. **Resource Characteristics:** Is it CPU-heavy, Memory-heavy, or IO-heavy based on the code/manifests?
+4. **Usage Patterns:** Any mention of peak hours, user concurrency, or scaling needs.
+
+BE CONCISE. FOCUS ON TECHNICAL TRUTH.
