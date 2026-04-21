@@ -112,13 +112,13 @@ TEMPERATURE=0.2                       # LLM temperature (lower = more determinis
 
 # OpenAI
 OPENAI_API_KEY=<your-openai-key>
-DEFAULT_OPENAI_MODEL=gpt-4o           # Primary reasoning model
-FAST_OPENAI_MODEL=gpt-4o-mini         # Fast model for discovery tasks
+OPENAI_DEFAULT_MODEL=gpt-4o           # Primary reasoning model
+OPENAI_FAST_MODEL=gpt-4o-mini         # Fast model for discovery tasks
 
 # Google Gemini
 GEMINI_API_KEY=<your-gemini-key>
-DEFAULT_GEMINI_MODEL=gemini-2.5-pro   # Primary reasoning model
-FAST_GEMINI_MODEL=gemini-3.1-flash-lite-preview  # Fast model for discovery tasks
+GEMINI_DEFAULT_MODEL=gemini-2.5-pro   # Primary reasoning model
+GEMINI_FAST_MODEL=gemini-3.1-flash-lite-preview  # Fast model for discovery tasks
 
 # Agent thresholds
 STORAGE_GATE_LIMIT_GI=50              # PVC size (GiB) that triggers the storage gate
@@ -190,7 +190,7 @@ airis/
 │   └── tools/               # MCP tool wrappers (Kubernetes, GitHub)
 ├── prompts/                 # Versioned LLM prompt templates (.txt / .jinja2)
 ├── examples/                # Example manifests and fixture data for testing
-├── data/                    # Local metrics cache (CSV, gitignored)
+├── .data/                   # All local state: intent caches, token logs, CSV findings
 ├── requirements.txt
 ├── .env                     # Local configuration (do not commit)
 ├── solution_design.md       # Full solution design document
