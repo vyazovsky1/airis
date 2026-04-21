@@ -74,6 +74,36 @@ MOCK_K8S_DATA = {
         ],
         "pvc": {},
         "disk_usage": {}
+    },
+    "front-end": {
+        "allocations": {
+            "kind": "Deployment",
+            "metadata": {
+                "name": "example-frontend",
+                "namespace": "production"
+            },
+            "spec": {
+                "template": {
+                    "metadata": {"labels": {"app": "frontend"}},
+                    "spec": {
+                        "containers": [{
+                            "name": "nginx",
+                            "resources": {
+                                "requests": {"cpu": "500m", "memory": "2Gi"},
+                                "limits": {"cpu": "1000m", "memory": "4Gi"}
+                            }
+                        }]
+                    }
+                }
+            }
+        },
+        "usage_metrics": [
+            {"cpu": "0.1", "memory": "1.2Gi"},
+            {"cpu": "0.15", "memory": "1.4Gi"},
+            {"cpu": "0.12", "memory": "1.3Gi"}
+        ],
+        "pvc": {},
+        "disk_usage": {}
     }
 }
 

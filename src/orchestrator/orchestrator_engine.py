@@ -36,7 +36,7 @@ def run_airis_cycle(pr_number: int, workload_name: str, provider: str = "gemini"
     
     # 1. Perceive Background info
     logger.info(f"Step 1/3: Fetching Pull Request diff for PR #{pr_number} from GitHub...")
-    pr_diff = github_utils.get_pull_request_diff(pr_number)
+    pr_diff = github_utils.get_pull_request_diff(pr_number, workload_name)
     
     logger.debug("Loading system prompts and guidelines...")
     
