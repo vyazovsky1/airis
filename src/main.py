@@ -23,8 +23,13 @@ def main():
     parser.add_argument("--action", type=str, choices=["pr", "dry-run"], default="pr", help="Action route to execute after analysis")
     parser.add_argument("--root", type=str, default=None, help="Explicit path to the workload's source code/config directory")
     parser.add_argument("--skip-cache", action="store_true", help="Force re-discovery of app context by skipping the local cache")
+    parser.add_argument("--log-level", type=str, choices=["DEBUG", "INFO", "WARNING", "ERROR"], default=config.LOG_LEVEL, help="Logging verbosity level")
     
     args = parser.parse_args()
+
+    # Update log level if explicitly provided
+    if args.log_level:
+        logging.getLogger().setLevel(args.log_level)
     
     if args.demo:
         logger.info("======== AIRIS DEMO MODE ========")
