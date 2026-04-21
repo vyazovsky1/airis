@@ -6,12 +6,12 @@ class Config:
     TEMPERATURE = float(os.environ.get("TEMPERATURE", 0.2))
     
     # Provider Default Models
-    DEFAULT_OPENAI_MODEL = os.environ.get("DEFAULT_OPENAI_MODEL", "gpt-4o")
-    DEFAULT_GEMINI_MODEL = os.environ.get("DEFAULT_GEMINI_MODEL", "gemini-2.5-pro")
+    OPENAI_DEFAULT_MODEL = os.environ.get("OPENAI_DEFAULT_MODEL", "gpt-4o")
+    GEMINI_DEFAULT_MODEL = os.environ.get("GEMINI_DEFAULT_MODEL", "gemini-2.5-pro")
 
     # Fast-Tier Models for Discovery/Scraping
-    FAST_OPENAI_MODEL = os.environ.get("FAST_OPENAI_MODEL", "gpt-4o-mini")
-    FAST_GEMINI_MODEL = os.environ.get("FAST_GEMINI_MODEL", "gemini-3.1-flash-lite-preview")
+    OPENAI_FAST_MODEL = os.environ.get("OPENAI_FAST_MODEL", "gpt-4o-mini")
+    GEMINI_FAST_MODEL = os.environ.get("GEMINI_FAST_MODEL", "gemini-3.1-flash-lite-preview")
     
     # Agent Thresholds
     STORAGE_GATE_LIMIT_GI = int(os.environ.get("STORAGE_GATE_LIMIT_GI", 50))
