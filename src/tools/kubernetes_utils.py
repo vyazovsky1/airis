@@ -43,6 +43,37 @@ MOCK_K8S_DATA = {
             "capacity": "200Gi",
             "percentage_used": "6%"
         }
+    },
+    "back-end": {
+        "allocations": {
+            "kind": "Deployment",
+            "metadata": {
+                "name": "example-backend",
+                "namespace": "production"
+            },
+            "spec": {
+                "template": {
+                    "metadata": {"labels": {"app": "backend"}},
+                    "spec": {
+                        "containers": [{
+                            "name": "python-app",
+                            "image": "example/backend-app:latest",
+                            "resources": {
+                                "requests": {"cpu": "1500m", "memory": "4Gi"},
+                                "limits": {"cpu": "1000m", "memory": "1Gi"}
+                            }
+                        }]
+                    }
+                }
+            }
+        },
+        "usage_metrics": [
+            {"cpu": "0.05", "memory": "150Mi"},
+            {"cpu": "0.08", "memory": "180Mi"},
+            {"cpu": "0.04", "memory": "140Mi"}
+        ],
+        "pvc": {},
+        "disk_usage": {}
     }
 }
 
