@@ -2,7 +2,7 @@ import csv
 import os
 import datetime
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data")
+DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "..", ".data")
 
 def init_cache():
     if not os.path.exists(DATA_DIR):
