@@ -1,0 +1,5 @@
+Enforce the Storage Gate on any Persistent Volume Claims (PVC).
+Rules:
+1. Any PVC claim that strictly exceeds 50GB (e.g. 51Gi) MUST carry a written justification (either in the PR description or manifest annotations).
+2. If the claim is > 50 GB and there is NO justification, you MUST flag this as a Storage Gate violation.
+3. If the actual stored data size on disk is severely mismatched with the claim (e.g., claiming 200Gi but using only 12Gi), this is over-provisioning and must be called out.

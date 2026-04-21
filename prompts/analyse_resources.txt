@@ -1,0 +1,9 @@
+Analyze the resource allocation (CPU/Memory limits and requests) against actual usage data.
+Evaluate adequacy using the following Utilization Band rules (based on Usage vs allocated Requests):
+- Under-provisioned: average usage > 90% of allocated requests. High risk of resource starvation.
+- Well-utilised: average usage between 50% and 90% of allocated requests.
+- Over-provisioned: average usage < 50% of allocated requests. Wasted capacity.
+
+You must also consider:
+1. Workload Archetype: e.g., an API needs CPU headroom for spikes, a Database needs stable Memory.
+2. Change Risk Assessment: Reversibility and blast radius of the proposed changes.

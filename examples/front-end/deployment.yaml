@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: example-frontend
+  labels:
+    app: frontend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+      - name: nginx-frontend
+        image: nginx:stable-alpine
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            cpu: "1000m"
+            memory: "512Mi"
+          limits:
+            cpu: "2000m"
+            memory: "1Gi"

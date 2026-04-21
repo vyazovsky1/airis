@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Inventory Dashboard</title>
+</head>
+<body>
+    <h1>Example Inventory Management</h1>
+    <div id="status">Loading...</div>
+    <div id="data">
+        <!-- Dashboard components would go here -->
+    </div>
+    <script>
+        // Simple polling logic to simulate user activity
+        async function fetchStats() {
+            try {
+                const response = await fetch('/api/v1/inventory/summary');
+                const data = await response.json();
+                document.getElementById('status').innerText = 'System Healthy';
+            } catch (err) {
+                document.getElementById('status').innerText = 'API Connection Spiking...';
+            }
+        }
+        setInterval(fetchStats, 5000);
+    </script>
+</body>
+</html>
