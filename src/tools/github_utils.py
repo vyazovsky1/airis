@@ -1,62 +1,27 @@
 import logging
+import os
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("AIRIS-Github")
 
+MOCKS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "examples", "mocks")
+
 def get_pull_request_diff(pr_number: int, workload_name: str = "") -> str:
-    """Simulates fetching a PR diff and extracting manifest changes."""
-    # We simulate a PR diff that is bumping something up or claiming heavy storage
-    if pr_number == 101:
-        if "back-end" in workload_name:
-            # Scenario: backend is asking for more resources (from 250m/256Mi to 1500m/4Gi)
-            return '''
-diff --git a/examples/back-end/deployment.yaml b/examples/back-end/deployment.yaml
---- a/examples/back-end/deployment.yaml
-+++ b/examples/back-end/deployment.yaml
-@@ -23,8 +23,8 @@
-         resources:
-           requests:
--            cpu: "250m"
--            memory: "256Mi"
-+            cpu: "1500m"
-+            memory: "4Gi"
-           limits:
-             cpu: "1000m"
-             memory: "1Gi"
-         '''
-        elif "front-end" in workload_name:
-            # Scenario: frontend is asking for 3 replicas and more memory
-            return '''
-diff --git a/examples/front-end/deployment.yaml b/examples/front-end/deployment.yaml
---- a/examples/front-end/deployment.yaml
-+++ b/examples/front-end/deployment.yaml
-@@ -8,7 +8,7 @@
--  replicas: 1
-+  replicas: 3
-...
-         resources:
-           requests:
--            cpu: "100m"
--            memory: "512Mi"
-+            cpu: "500m"
-+            memory: "2Gi"
-         '''
-        else:
-            # Default fall-back scenario (e.g. payments-db legacy)
-            return '''
-diff --git a/kubernetes/production/payments-db/statefulset.yaml b/kubernetes/production/payments-db/statefulset.yaml
---- a/kubernetes/production/payments-db/statefulset.yaml
-+++ b/kubernetes/production/payments-db/statefulset.yaml
-@@ -40,7 +40,7 @@
-   volumeClaimTemplates:
-   - metadata:
-       name: data
-     spec:
-       resources:
-         requests:
--          storage: 100Gi
-+          storage: 200Gi
-         '''
+    """
+    Simulates fetching a PR diff from a local mock file.
+    Expects files to be named 'pr{number}.diff' in the examples/mocks directory.
+    """
+    diff_filename = f"pr{pr_number}.diff"
+    diff_path = os.path.join(MOCKS_DIR, diff_filename)
+    
+    try:
+        if os.path.exists(diff_path):
+            with open(diff_path, "r", encoding="utf-8") as f:
+                return f.read()
+        logger.warning(f"Mock diff file not found at {diff_path}. Ensure it exists in examples/mocks/")
+    except Exception as e:
+        logger.error(f"Error reading mock diff file {diff_path}: {e}")
+            
     return "No significant changes."
 
 def create_pull_request_review(pr_number: int, comment_markdown: str):

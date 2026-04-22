@@ -1,0 +1,22 @@
+Based on the following repository analysis, determine the Resource DNA.
+
+ANALYSIS CONTEXT:
+{{ context_json }}
+
+Please provide:
+1. Workload Archetype (e.g., Processor, Pipe, or Storage Node).
+2. Recommended K8s CPU and Memory (Requests and Limits).
+3. Risk Advisories (e.g., OOM risks, IO bottlenecks).
+
+Output ONLY raw JSON in the following format:
+{
+  "archetype": "string",
+  "resource_recommendations": {
+    "cpu": { "request": "string", "limit": "string" },
+    "memory": { "request": "string", "limit": "string" },
+    "storage": { "request": "string", "reversibility": "string" }
+  },
+  "risk_advisory": [
+    { "type": "string", "severity": "HIGH|MEDIUM|LOW", "reason": "string" }
+  ]
+}

@@ -4,7 +4,7 @@ import logging
 from typing import Dict, Any, Optional
 from openai import OpenAI
 from google import genai
-from config import config
+from core.config import config
 import tools.token_stats as token_stats
 
 logger = logging.getLogger(__name__)

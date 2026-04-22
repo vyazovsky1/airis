@@ -1,0 +1,9 @@
+Analyze the following code for:
+1. Core business logic/intent.
+2. Computational complexity.
+3. Potential resource bottlenecks (CPU/Memory/IO).
+
+Output your analysis as a concise summary.
+
+CODE:
+{{ code_snippet }}

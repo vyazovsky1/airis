@@ -1,0 +1,13 @@
+diff --git a/examples/back-end/deployment.yaml b/examples/back-end/deployment.yaml
+--- a/examples/back-end/deployment.yaml
++++ b/examples/back-end/deployment.yaml
+@@ -23,8 +23,8 @@
+         resources:
+           requests:
+-            cpu: "250m"
+-            memory: "256Mi"
++            cpu: "1500m"
++            memory: "4Gi"
+           limits:
+             cpu: "1000m"
+             memory: "1Gi"

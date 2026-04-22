@@ -1,0 +1,8 @@
+diff --git a/examples/database/statefulset.yaml b/examples/database/statefulset.yaml
+--- a/examples/database/statefulset.yaml
++++ b/examples/database/statefulset.yaml
+@@ -35,5 +35,5 @@
+       resources:
+         requests:
+-          storage: 500Gi
++          storage: 1Ti

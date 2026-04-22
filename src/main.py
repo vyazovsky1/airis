@@ -1,17 +1,13 @@
 import argparse
 import sys
-import logging
+from core.logger import setup_logging, get_logger
+from core.config import config
 from orchestrator import orchestrator_engine
 from dotenv import load_dotenv
-from config import config
 
 load_dotenv()
-
-logging.basicConfig(level=config.LOG_LEVEL, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
-
-if sys.stdout.encoding.lower() != 'utf-8':
-    sys.stdout.reconfigure(encoding='utf-8')
+setup_logging()
+logger = get_logger(__name__)
 
 def main():
     parser = argparse.ArgumentParser(description="AIRIS - AI Engine for Resource Intelligence")
@@ -29,14 +25,19 @@ def main():
 
     # Update log level if explicitly provided
     if args.log_level:
+        import logging
         logging.getLogger().setLevel(args.log_level)
     
-    if args.demo:
-        logger.info("======== AIRIS DEMO MODE ========")
-        orchestrator_engine.run_airis_cycle(args.pr, args.workload, args.provider, args.model, args.action, args.root, args.skip_cache)
-    else:
-        logger.info("Running in standard mode.")
-        orchestrator_engine.run_airis_cycle(args.pr, args.workload, args.provider, args.model, args.action, args.root, args.skip_cache)
+    logger.info(f"Running AIRIS Engine in {args.action} mode.")
+    orchestrator_engine.run_airis_cycle(
+        pr_number=args.pr, 
+        workload_name=args.workload, 
+        provider=args.provider, 
+        model_name=args.model, 
+        action=args.action, 
+        workload_root=args.root, 
+        skip_cache=args.skip_cache
+    )
 
 if __name__ == "__main__":
     main()
