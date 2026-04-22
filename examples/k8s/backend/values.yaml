@@ -1,0 +1,26 @@
+# fullnameOverride gives a predictable service name for the frontend to reference
+fullnameOverride: "guestbook-backend"
+
+replicaCount: 1
+
+image:
+  repository: gcr.io/google-samples/gb-frontend
+  tag: "v5"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 80
+
+# Must match database chart's fullnameOverride
+database:
+  host: "redis-leader"
+  port: 6379
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 100Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

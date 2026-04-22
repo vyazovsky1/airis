@@ -1,0 +1,26 @@
+# fullnameOverride gives a predictable service name for other charts to reference
+fullnameOverride: "redis-leader"
+
+replicaCount: 1
+
+image:
+  repository: redis
+  tag: "7-alpine"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 6379
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 250m
+    memory: 256Mi
+
+persistence:
+  enabled: true
+  storageClass: "standard"  # minikube built-in StorageClass (hostPath on node disk)
+  size: 1Gi

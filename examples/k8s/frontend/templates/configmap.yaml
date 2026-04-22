@@ -1,0 +1,243 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "guestbook-frontend.fullname" . }}
+  labels:
+    {{- include "guestbook-frontend.labels" . | nindent 4 }}
+data:
+  default.conf: |
+    server {
+        listen 80;
+        server_name _;
+        root /usr/share/nginx/html;
+
+        location / {
+            try_files $uri $uri/ /index.html;
+        }
+
+        # Proxy all /api/ calls to the backend PHP service
+        location /api/ {
+            proxy_pass http://{{ .Values.backend.host }}:{{ .Values.backend.port }}/;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_read_timeout 30s;
+        }
+    }
+
+  index.html: |
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>Guestbook</title>
+      <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          background: #f0f2f5;
+          min-height: 100vh;
+        }
+        .container { max-width: 640px; margin: 48px auto; padding: 0 20px; }
+        h1 { font-size: 2rem; color: #1a1a2e; margin-bottom: 8px; }
+        .subtitle { color: #666; margin-bottom: 28px; font-size: 0.9rem; }
+        .card {
+          background: white;
+          border-radius: 12px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+          padding: 24px;
+          margin-bottom: 20px;
+        }
+        .add-form { display: flex; gap: 10px; }
+        .add-form input {
+          flex: 1;
+          padding: 10px 14px;
+          border: 1.5px solid #e0e0e0;
+          border-radius: 8px;
+          font-size: 1rem;
+          transition: border-color 0.2s;
+        }
+        .add-form input:focus { outline: none; border-color: #4f46e5; }
+        .btn {
+          padding: 10px 20px;
+          border: none;
+          border-radius: 8px;
+          cursor: pointer;
+          font-size: 0.9rem;
+          font-weight: 600;
+          transition: background 0.2s;
+        }
+        .btn-primary { background: #4f46e5; color: white; }
+        .btn-primary:hover { background: #4338ca; }
+        .btn-primary:disabled { background: #a5b4fc; cursor: not-allowed; }
+        .btn-danger { background: #fee2e2; color: #dc2626; font-size: 0.8rem; padding: 5px 10px; }
+        .btn-danger:hover { background: #fecaca; }
+        .messages-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 12px;
+        }
+        .messages-title { font-weight: 600; color: #374151; }
+        .count-badge {
+          background: #ede9fe;
+          color: #7c3aed;
+          font-size: 0.75rem;
+          font-weight: 700;
+          padding: 2px 8px;
+          border-radius: 999px;
+        }
+        .message-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 12px 14px;
+          border-radius: 8px;
+          background: #fafafa;
+          border: 1px solid #f0f0f0;
+          margin-bottom: 8px;
+          animation: fadeIn 0.2s ease;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+        .message-text { color: #374151; font-size: 0.95rem; word-break: break-word; flex: 1; margin-right: 12px; }
+        .empty { text-align: center; color: #9ca3af; padding: 32px 0; font-size: 0.95rem; }
+        .status-bar {
+          text-align: center;
+          font-size: 0.82rem;
+          color: #6b7280;
+          min-height: 20px;
+          margin-top: 12px;
+        }
+        .status-bar.success { color: #059669; }
+        .status-bar.error { color: #dc2626; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <h1>Guestbook</h1>
+        <p class="subtitle">Kubernetes demo app — Redis + PHP backend + Nginx frontend</p>
+
+        <div class="card">
+          <div class="add-form">
+            <input
+              type="text"
+              id="messageInput"
+              placeholder="Write your message and press Enter..."
+              maxlength="200"
+            />
+            <button class="btn btn-primary" id="addBtn" onclick="addMessage()">Add</button>
+          </div>
+          <div class="status-bar" id="status"></div>
+        </div>
+
+        <div class="card">
+          <div class="messages-header">
+            <span class="messages-title">Messages</span>
+            <span class="count-badge" id="countBadge">0</span>
+          </div>
+          <div id="messagesList"></div>
+          <div class="empty" id="emptyState">No messages yet. Be the first to write!</div>
+        </div>
+      </div>
+
+      <script>
+        let messages = [];
+
+        async function loadMessages() {
+          try {
+            const res = await fetch('/api/guestbook.php?cmd=get');
+            const data = await res.json();
+            messages = data.data ? data.data.split(',').map(m => m.trim()).filter(Boolean) : [];
+            renderMessages();
+          } catch (e) {
+            setStatus('Failed to load messages: ' + e.message, 'error');
+          }
+        }
+
+        function renderMessages() {
+          const list = document.getElementById('messagesList');
+          const empty = document.getElementById('emptyState');
+          const badge = document.getElementById('countBadge');
+
+          badge.textContent = messages.length;
+          list.innerHTML = '';
+
+          if (messages.length === 0) {
+            empty.style.display = 'block';
+            return;
+          }
+          empty.style.display = 'none';
+
+          messages.forEach((msg, idx) => {
+            const item = document.createElement('div');
+            item.className = 'message-item';
+            item.innerHTML =
+              '<span class="message-text">' + escapeHtml(msg) + '</span>' +
+              '<button class="btn btn-danger" onclick="deleteMessage(' + idx + ')">Delete</button>';
+            list.appendChild(item);
+          });
+        }
+
+        async function saveMessages() {
+          const value = messages.join(',');
+          await fetch('/api/guestbook.php?cmd=set&key=messages&value=' + encodeURIComponent(value));
+        }
+
+        async function addMessage() {
+          const input = document.getElementById('messageInput');
+          const btn = document.getElementById('addBtn');
+          const msg = input.value.trim();
+          if (!msg) return;
+
+          btn.disabled = true;
+          try {
+            messages.push(msg);
+            await saveMessages();
+            input.value = '';
+            renderMessages();
+            setStatus('Message added!', 'success');
+          } catch (e) {
+            messages.pop();
+            setStatus('Failed to add: ' + e.message, 'error');
+          } finally {
+            btn.disabled = false;
+            setTimeout(() => setStatus(''), 2500);
+          }
+        }
+
+        async function deleteMessage(idx) {
+          const removed = messages.splice(idx, 1);
+          try {
+            await saveMessages();
+            renderMessages();
+            setStatus('Message deleted!', 'success');
+          } catch (e) {
+            messages.splice(idx, 0, removed[0]);
+            setStatus('Failed to delete: ' + e.message, 'error');
+          } finally {
+            setTimeout(() => setStatus(''), 2500);
+          }
+        }
+
+        function setStatus(msg, type = '') {
+          const el = document.getElementById('status');
+          el.textContent = msg;
+          el.className = 'status-bar ' + type;
+        }
+
+        function escapeHtml(text) {
+          const div = document.createElement('div');
+          div.appendChild(document.createTextNode(text));
+          return div.innerHTML;
+        }
+
+        document.getElementById('messageInput').addEventListener('keypress', e => {
+          if (e.key === 'Enter') addMessage();
+        });
+
+        loadMessages();
+      </script>
+    </body>
+    </html>
