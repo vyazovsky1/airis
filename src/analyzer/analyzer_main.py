@@ -46,13 +46,6 @@ def run_analysis(repo_path: str, workload_name: str, output_dir: str, provider: 
         from analyzer.generator.artifact_manager import ArtifactManager
         generator = ArtifactManager(workload_name, scanner_artifacts, logic_artifacts, resource_dna, output_dir)
         generator.generate_suite()
-        
-        # Save Token Stats to the output directory
-        stats = token_stats.get_stats()
-        with open(os.path.join(output_dir, "token_stats.json"), "w") as f:
-            import json
-            json.dump(stats, f, indent=2)
-            
     except Exception as e:
         logger.error(f"Failed to generate artifact suite: {e}")
 
@@ -72,9 +65,14 @@ def main():
         logger.error(f"Repository path does not exist: {args.repo}")
         sys.exit(1)
         
-    os.makedirs(args.out, exist_ok=True)
+    # Dynamically resolve output directory if default is used
+    out_dir = args.out
+    if out_dir == ".data/analysis":
+        out_dir = os.path.join(out_dir, args.workload)
+        
+    os.makedirs(out_dir, exist_ok=True)
     
-    run_analysis(args.repo, args.workload, args.out)
+    run_analysis(args.repo, args.workload, out_dir, provider=args.provider)
 
 if __name__ == "__main__":
     main()

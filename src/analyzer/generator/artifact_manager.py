@@ -32,34 +32,65 @@ class ArtifactManager:
         self._save_resource_dna()
         self._generate_complexity_heatmap()
         self._generate_module_dossiers()
-        self._generate_logic_graph()
+        self._generate_summaries()
+        #self._generate_logic_graph()
+        self._save_token_usage()
 
     def _generate_intelligence_report(self):
-        """Creates the main human-readable MD report."""
+        """Creates the main human-readable MD report with Full-Spectrum context."""
         report_path = os.path.join(self.output_dir, f"intelligence_report_{self.workload_name}.md")
         
+        cpu_rec = self.dna.get('resource_recommendations', {}).get('cpu', {})
+        mem_rec = self.dna.get('resource_recommendations', {}).get('memory', {})
+
         md_content = f"""# ARILC Intelligence Report: {self.workload_name}
 
 ## Executive Summary
 **Archetype:** {self.dna.get('archetype', 'Unknown')}
-**Recommended CPU:** {self.dna.get('resource_recommendations', {}).get('cpu', {}).get('request')} Request / {self.dna.get('resource_recommendations', {}).get('cpu', {}).get('limit')} Limit
-**Recommended Memory:** {self.dna.get('resource_recommendations', {}).get('memory', {}).get('request')} Request / {self.dna.get('resource_recommendations', {}).get('memory', {}).get('limit')} Limit
 
-## Logic Comprehension
-The repository logic has been analyzed using a tiered reasoning approach.
+### Resource Recommendations
+| Resource | Request | Limit | Reason |
+| :--- | :--- | :--- | :--- |
+| **CPU** | {cpu_rec.get('request')} | {cpu_rec.get('limit')} | {cpu_rec.get('reason')} |
+| **Memory** | {mem_rec.get('request')} | {mem_rec.get('limit')} | {mem_rec.get('reason')} |
 
-### Complexity Matrix
-| Component | Max Complexity | Tier Used |
-| :--- | :--- | :--- |
+## Full-Spectrum Context
+The analysis synthesized intelligence from the following repository pillars:
+
+### 📄 Documentation & Intent
 """
+        docs = self.perception.get("docs_context", [])
+        if docs:
+            for doc in docs:
+                md_content += f"- `{doc['file']}`\n"
+        else:
+            md_content += "- *No significant documentation discovered.*\n"
+
+        md_content += "\n### 🏗️ Infrastructure & Deployment\n"
+        infra = self.perception.get("infra_context", [])
+        if infra:
+            for inf in infra:
+                md_content += f"- `{inf['file']}`\n"
+        else:
+            md_content += "- *No infrastructure-as-code artifacts discovered.*\n"
+
+        md_content += "\n## Logic Comprehension\n"
+        md_content += "The repository logic has been analyzed using a tiered reasoning approach (Thinking, Fast, and Batch).\n\n"
+        md_content += "### Complexity Matrix\n"
+        md_content += "| Component | Max Complexity | Tier Used |\n| :--- | :--- | :--- |\n"
+        
         for item in self.logic.get("complexity_matrix", []):
             tier = "Thinking" if item.get("escalate") else "Fast"
             md_content += f"| `{os.path.basename(item['file'])}` | {item['max_complexity']} | {tier} |\n"
             
         md_content += "\n## Risk Advisories\n"
-        for risk in self.dna.get("risk_advisory", []):
-            md_content += f"- **[{risk.get('severity')}] {risk.get('type')}**: {risk.get('reason')}\n"
-            
+        risk_list = self.dna.get("risk_advisory", [])
+        if risk_list:
+            for risk in risk_list:
+                md_content += f"- **[{risk.get('severity')}] {risk.get('type')}**: {risk.get('reason')}\n"
+        else:
+            md_content += "- *No critical resource risks identified.*\n"
+
         with open(report_path, "w", encoding="utf-8") as f:
             f.write(md_content)
         logger.info(f"Intelligence Report generated: {report_path}")
@@ -99,6 +130,23 @@ The repository logic has been analyzed using a tiered reasoning approach.
                 f.write(content)
         logger.info(f"Module Dossiers generated in {self.dossier_dir}")
 
+    def _generate_summaries(self):
+        """Dump of Documentation, Infrastructure, Dependency summaries."""
+
+        doc_summary_path = os.path.join(self.output_dir, f"doc_summary_{self.workload_name}.md")
+        with open(doc_summary_path, "w", encoding="utf-8") as f:
+            f.write(self.logic.get("doc_summary", "No documentation summary available."))
+
+        infra_summary_path = os.path.join(self.output_dir, f"infra_summary_{self.workload_name}.md")
+        with open(infra_summary_path, "w", encoding="utf-8") as f:
+            f.write(self.logic.get("infra_summary", "No infrastructure summary available."))
+
+        dependencies_summary_path = os.path.join(self.output_dir, f"dependencies_summary_{self.workload_name}.md")
+        with open(dependencies_summary_path, "w", encoding="utf-8") as f:
+            f.write(self.logic.get("dependencies_summary", "No dependencies summary available."))
+
+        logger.info(f"Documentation, Infrastructure, Dependency summaries generated in {self.output_dir}")
+
     def _generate_logic_graph(self):
         """Generates a basic Mermaid graph of logic flow."""
         graph_path = os.path.join(self.output_dir, f"logic_flow_{self.workload_name}.mermaid")
@@ -113,3 +161,20 @@ The repository logic has been analyzed using a tiered reasoning approach.
         with open(graph_path, "w", encoding="utf-8") as f:
             f.write(content)
         logger.info(f"Logic Flow graph generated: {graph_path}")
+
+    def _save_token_usage(self):
+        """Saves token usage summary for cost tracking."""
+        import tools.token_stats as token_stats
+        usage_path = os.path.join(self.output_dir, "token_usage.json")
+        stats = token_stats.get_stats()
+        
+        # Add a simple 'total' rollup for convenience
+        stats["total_combined"] = {
+            "input": stats["thinking"]["input"] + stats["fast"]["input"],
+            "output": stats["thinking"]["output"] + stats["fast"]["output"],
+            "calls": stats["thinking"]["calls"] + stats["fast"]["calls"]
+        }
+        
+        with open(usage_path, "w", encoding="utf-8") as f:
+            json.dump(stats, f, indent=2)
+        logger.info(f"Token usage summary saved: {usage_path}")

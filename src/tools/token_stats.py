@@ -58,3 +58,8 @@ def log_summary() -> None:
         f"in: {total_in:>7,} | out: {total_out:>7,} | total: {total_in + total_out:>8,}"
     )
     logger.info("=" * table_len)
+
+def get_stats() -> dict:
+    """Return a deep copy of the current token statistics."""
+    import copy
+    return copy.deepcopy(_stats)
