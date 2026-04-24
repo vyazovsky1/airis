@@ -13,6 +13,12 @@ spec:
     metadata:
       labels:
         {{- include "guestbook-database.selectorLabels" . | nindent 8 }}
+      {{- if .Values.metrics.enabled }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9121"
+        prometheus.io/path: "/metrics"
+      {{- end }}
     spec:
       containers:
         - name: redis
@@ -39,6 +45,28 @@ spec:
             - name: redis-data
               mountPath: /data
           {{- end }}
+
+        {{- if .Values.metrics.enabled }}
+        - name: redis-exporter
+          image: "{{ .Values.metrics.image.repository }}:{{ .Values.metrics.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: REDIS_ADDR
+              value: "redis://localhost:6379"
+          ports:
+            - name: metrics
+              containerPort: 9121
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.metrics.resources | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+            initialDelaySeconds: 5
+            periodSeconds: 10
+        {{- end }}
+
       {{- if .Values.persistence.enabled }}
       volumes:
         - name: redis-data

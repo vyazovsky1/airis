@@ -14,8 +14,12 @@ spec:
       labels:
         {{- include "guestbook-frontend.selectorLabels" . | nindent 8 }}
       annotations:
-        # Force pod restart when ConfigMap changes
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- if .Values.metrics.enabled }}
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9113"
+        prometheus.io/path: "/metrics"
+        {{- end }}
     spec:
       containers:
         - name: nginx
@@ -46,6 +50,27 @@ spec:
               port: http
             initialDelaySeconds: 10
             periodSeconds: 30
+
+        {{- if .Values.metrics.enabled }}
+        - name: nginx-exporter
+          image: "{{ .Values.metrics.image.repository }}:{{ .Values.metrics.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - --nginx.scrape-uri=http://localhost/stub_status
+          ports:
+            - name: metrics
+              containerPort: 9113
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.metrics.resources | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+            initialDelaySeconds: 5
+            periodSeconds: 10
+        {{- end }}
+
       volumes:
         - name: config
           configMap:

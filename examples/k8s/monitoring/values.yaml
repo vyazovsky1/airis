@@ -1,0 +1,42 @@
+kube-prometheus-stack:
+
+  # ── Grafana ─────────────────────────────────────────────────────────────────
+  grafana:
+    enabled: true
+    adminPassword: "admin"
+    service:
+      type: NodePort
+      nodePort: 30030
+    persistence:
+      enabled: false   # set true for persistent dashboards
+
+  # ── Prometheus ──────────────────────────────────────────────────────────────
+  prometheus:
+    prometheusSpec:
+      retention: 7d
+
+      # Watch ServiceMonitors in ALL namespaces (not just monitoring/)
+      serviceMonitorSelectorNilUsesHelmValues: false
+      serviceMonitorSelector: {}
+      serviceMonitorNamespaceSelector: {}
+
+      # Persistent storage for metrics data
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            storageClassName: standard   # minikube built-in StorageClass
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 5Gi
+
+  # ── AlertManager ────────────────────────────────────────────────────────────
+  alertmanager:
+    enabled: false   # keep it simple for this demo
+
+  # ── Node / kube-state metrics ────────────────────────────────────────────────
+  nodeExporter:
+    enabled: true
+
+  kubeStateMetrics:
+    enabled: true

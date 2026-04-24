@@ -1,0 +1,9 @@
+apiVersion: v2
+name: guestbook-monitoring
+description: Prometheus + Grafana monitoring stack for the Guestbook application
+type: application
+version: 0.1.0
+dependencies:
+  - name: kube-prometheus-stack
+    version: ">=60.0.0"
+    repository: https://prometheus-community.github.io/helm-charts

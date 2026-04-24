@@ -102,6 +102,9 @@ wsl --set-version Ubuntu 2
 
 ### 1.3 Install Docker Desktop
 
+sudo apt  install docker.io
+sudo usermod -aG docker $USER && newgrp docker
+
 Docker Desktop is the container runtime. minikube will use it as its driver.
 
 1. Download the installer: **https://www.docker.com/products/docker-desktop/**
@@ -488,6 +491,147 @@ minikube service guestbook-frontend -n guestbook
 
 ---
 
+## Part 7 — Monitoring with Prometheus & Grafana
+
+The `monitoring/` chart deploys the full `kube-prometheus-stack` (Prometheus + Grafana + node-exporter + kube-state-metrics). The database and frontend pods each run a metrics sidecar:
+
+| Component | Sidecar | Port | What it exposes |
+|-----------|---------|------|-----------------|
+| database | `redis_exporter` | 9121 | memory, hit rate, connections, commands/sec |
+| frontend | `nginx-prometheus-exporter` | 9113 | requests/sec, status codes, active connections |
+| nodes | `node-exporter` (built-in) | — | CPU, RAM, disk, network |
+| K8s objects | `kube-state-metrics` (built-in) | — | pod/deployment/PVC status |
+
+Prometheus discovers the database and frontend targets automatically via `ServiceMonitor` resources in `monitoring/templates/`.
+
+---
+
+### 7.1 Add the Helm repository
+
+```bash
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo update
+```
+
+---
+
+### 7.2 Download chart dependencies
+
+```bash
+# Run from the examples/k8s/ directory
+helm dependency update ./monitoring
+```
+
+This pulls `kube-prometheus-stack` into `monitoring/charts/`. It may take a minute on the first run.
+
+---
+
+### 7.3 Deploy the monitoring stack
+
+```bash
+helm install gb-monitoring ./monitoring -n monitoring --create-namespace
+```
+
+The stack takes 1–2 minutes to fully start. Watch the pods:
+
+```bash
+kubectl get pods -n monitoring --watch
+```
+
+All pods should reach `Running` or `Completed` status:
+
+```
+NAME                                                     READY   STATUS    AGE
+gb-monitoring-grafana-xxxxxxxxx-xxxxx                    3/3     Running   2m
+gb-monitoring-kube-prometheus-stack-operator-xxx-xxxxx   1/1     Running   2m
+gb-monitoring-kube-state-metrics-xxxxxxxxx-xxxxx         1/1     Running   2m
+gb-monitoring-prometheus-node-exporter-xxxxx             1/1     Running   2m
+prometheus-gb-monitoring-kube-prometheus-stack-0         2/2     Running   90s
+```
+
+---
+
+### 7.4 Open Grafana
+
+```bash
+minikube service gb-monitoring-kube-prometheus-stack-grafana -n monitoring
+```
+
+Login credentials:
+- **Username:** `admin`
+- **Password:** `admin`
+
+> To change the password, set `kube-prometheus-stack.grafana.adminPassword` in `monitoring/values.yaml` before deploying.
+
+---
+
+### 7.5 Verify Prometheus is scraping the guestbook targets
+
+In the Grafana sidebar go to **Connections → Data sources → Prometheus → Explore** and run:
+
+```promql
+up{namespace="guestbook"}
+```
+
+You should see two targets with value `1` (up):
+- `redis-leader` — the Redis exporter
+- `guestbook-frontend` — the nginx exporter
+
+Alternatively, open the Prometheus UI directly:
+
+```bash
+kubectl port-forward -n monitoring svc/gb-monitoring-kube-prometheus-stack-prometheus 9090:9090
+```
+
+Then open `http://localhost:9090/targets` — the guestbook section should show both targets as **UP**.
+
+---
+
+### 7.6 Import pre-built dashboards
+
+Grafana has a public dashboard library. Import these with **Dashboards → New → Import**, enter the ID, and select the Prometheus data source:
+
+| Dashboard | ID | Shows |
+|-----------|----|-------|
+| Redis Exporter | `11835` | memory, keyspace, hit/miss rate, latency |
+| NGINX Prometheus Exporter | `12708` | requests/sec, response times, status codes |
+| Node Exporter Full | `1860` | CPU, RAM, disk I/O, network per node |
+| Kubernetes / Pods | `6417` | pod CPU & memory per namespace |
+
+---
+
+### 7.7 Useful PromQL queries
+
+```promql
+# Redis memory usage in MB
+redis_memory_used_bytes{namespace="guestbook"} / 1024 / 1024
+
+# Redis commands per second
+rate(redis_commands_processed_total{namespace="guestbook"}[1m])
+
+# Nginx requests per second
+rate(nginx_http_requests_total{namespace="guestbook"}[1m])
+
+# Nginx active connections
+nginx_connections_active{namespace="guestbook"}
+
+# Pod restarts in the guestbook namespace
+kube_pod_container_status_restarts_total{namespace="guestbook"}
+```
+
+---
+
+### 7.8 Remove the monitoring stack
+
+```bash
+helm uninstall gb-monitoring -n monitoring
+kubectl delete namespace monitoring
+```
+
+> **Note:** The Prometheus PersistentVolumeClaim is deleted along with the namespace. All collected metrics history will be lost.
+
+---
+
 ## File Structure
 
 ```
@@ -507,13 +651,19 @@ examples/k8s/
 │       ├── _helpers.tpl
 │       ├── deployment.yaml
 │       └── service.yaml
-└── frontend/                        ← Helm chart for Nginx + UI
-    ├── Chart.yaml
-    ├── values.yaml
+├── frontend/                        ← Helm chart for Nginx + UI
+│   ├── Chart.yaml
+│   ├── values.yaml
+│   └── templates/
+│       ├── _helpers.tpl
+│       ├── configmap.yaml           ← nginx.conf + index.html
+│       ├── deployment.yaml
+│       ├── service.yaml
+│       └── ingress.yaml
+└── monitoring/                      ← Helm chart for Prometheus + Grafana
+    ├── Chart.yaml                   ← declares kube-prometheus-stack dependency
+    ├── values.yaml                  ← Prometheus/Grafana configuration
     └── templates/
-        ├── _helpers.tpl
-        ├── configmap.yaml           ← nginx.conf + index.html
-        ├── deployment.yaml
-        ├── service.yaml
-        └── ingress.yaml
+        ├── servicemonitor-database.yaml   ← scrape redis_exporter on :9121
+        └── servicemonitor-frontend.yaml   ← scrape nginx-exporter on :9113
 ```

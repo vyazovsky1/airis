@@ -24,3 +24,16 @@ persistence:
   enabled: true
   storageClass: "standard"  # minikube built-in StorageClass (hostPath on node disk)
   size: 1Gi
+
+metrics:
+  enabled: true
+  image:
+    repository: oliver006/redis_exporter
+    tag: "v1.63.0"
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      cpu: 50m
+      memory: 64Mi

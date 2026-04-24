@@ -1,0 +1,18 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: guestbook-frontend
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: guestbook-frontend
+spec:
+  namespaceSelector:
+    matchNames:
+      - guestbook
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: guestbook-frontend
+  endpoints:
+    - port: metrics
+      interval: 30s
+      path: /metrics
