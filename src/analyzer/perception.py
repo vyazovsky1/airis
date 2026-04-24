@@ -20,17 +20,22 @@ class PerceptionEngine:
             "languages": {},
             "stack": [],
             "entry_points": [],
-            "heavy_libs": []
+            "heavy_libs": [],
+            "source_manifest": [],
+            "docs_context": [],
+            "infra_context": [],
+            "manifest_context": []
         }
 
     def scan(self) -> Dict[str, Any]:
-        """Performs the full perception scan."""
-        logger.info(f"Scanning repository for workload perception: {self.repo_path}")
+        """Performs the full spectrum perception scan."""
+        logger.info(f"Scanning repository for Full-Spectrum Perception: {self.repo_path}")
         
         self._detect_languages()
         self._detect_stack_metadata()
+        self._harvest_documentation()
+        self._harvest_infrastructure()
         self._map_entry_points()
-        self._identify_resource_signatures()
         
         return self.results
 
@@ -39,8 +44,9 @@ class PerceptionEngine:
         extensions = {
             ".py": "Python",
             ".go": "Go",
-            ".js": "JavaScript",
+            ".js": "JavaScript", ".mjs": "Module JavaScript (NodeJS)", ".ejs": "Embedded JavaScript (NodeJS)",
             ".ts": "TypeScript",
+            ".php": "PHP",
             ".java": "Java",
             ".yaml": "Infrastructure (YAML)",
             ".yml": "Infrastructure (YAML)",
@@ -51,10 +57,16 @@ class PerceptionEngine:
         counts = {}
         for root, _, files in os.walk(self.repo_path):
             for file in files:
+                path = os.path.join(root, file)
                 ext = os.path.splitext(file)[1] or file
                 if ext in extensions:
                     lang = extensions[ext]
                     counts[lang] = counts.get(lang, 0) + 1
+                    
+                    # Track source code files in manifest for full logic depth (RELPATH)
+                    if lang not in ["Infrastructure (YAML)", "Container"]:
+                        rel_path = os.path.relpath(path, self.repo_path)
+                        self.results["source_manifest"].append(rel_path)
         
         self.results["languages"] = counts
         logger.info(f"Detected languages: {counts}")
@@ -72,11 +84,19 @@ class PerceptionEngine:
         for root, _, files in os.walk(self.repo_path):
             for file in files:
                 if file in manifests:
+                    manifest_path = os.path.join(root, file)
                     self.results["stack"].append(manifests[file])
+                    # Harvest raw manifest for context
+                    try:
+                        with open(manifest_path, "r", encoding="utf-8") as f:
+                            self.results["manifest_context"].append({
+                                "file": os.path.relpath(manifest_path, self.repo_path),
+                                "content": f.read()[:2000] # Cap manifest context
+                            })
+                    except Exception: pass
                     
-                    # Deep scan for heavy libraries in requirements.txt
                     if file == "requirements.txt":
-                        self._scan_python_deps(os.path.join(root, file))
+                        self._scan_python_deps(manifest_path)
 
     def _scan_python_deps(self, path: str):
         """Scans requirements.txt for 'Heavy' libraries."""
@@ -90,13 +110,62 @@ class PerceptionEngine:
         except Exception as e:
             logger.warning(f"Failed to read requirements.txt: {e}")
 
+    def _harvest_documentation(self):
+        """Recursively scans for and ingests documentation for logical intent."""
+        logger.info("Harvesting Documentation Context...")
+        doc_exts = [".md", ".txt", ".adoc"]
+        doc_files = ["README", "ARCHITECTURE", "INSTALL", "DESIGN", "CONTRIBUTING"]
+        
+        for root, _, files in os.walk(self.repo_path):
+            # Only look in root or 'docs' folders
+            rel_path = os.path.relpath(root, self.repo_path)
+            if rel_path != "." and not rel_path.lower().startswith("docs"):
+                continue
+
+            for file in files:
+                name, ext = os.path.splitext(file)
+                if ext.lower() in doc_exts or any(dn in name.upper() for dn in doc_files):
+                    path = os.path.join(root, file)
+                    try:
+                        with open(path, "r", encoding="utf-8") as f:
+                            self.results["docs_context"].append({
+                                "file": os.path.relpath(path, self.repo_path),
+                                "content": f.read()[:3000] # Cap doc context
+                            })
+                    except Exception: pass
+
+    def _harvest_infrastructure(self):
+        """Ingests Infrastructure-as-Code files for environment baselines."""
+        logger.info("Harvesting Infrastructure Context...")
+        infra_files = ["Dockerfile", ".yaml", ".yml", "docker-compose"]
+        
+        for root, _, files in os.walk(self.repo_path):
+            for file in files:
+                if any(inf in file for inf in infra_files):
+                    # Skip common non-infra YAMLs
+                    if any(skip in file.lower() for skip in ["label", "dependabot", "workflow"]):
+                        continue
+                        
+                    path = os.path.join(root, file)
+                    try:
+                        with open(path, "r", encoding="utf-8") as f:
+                            content = f.read()
+                            # Specifically look for resource-heavy keywords in YAML/Dockerfile
+                            if any(kw in content for kw in ["memory", "cpu", "limit", "request", "EXPOSE", "VOLUME"]):
+                                self.results["infra_context"].append({
+                                    "file": os.path.relpath(path, self.repo_path),
+                                    "content": content[:2000]
+                                })
+                    except Exception: pass
+
     def _map_entry_points(self):
-        """Identifies entry points (main functions, API controllers)."""
+        """Identifies logical entry points (Controllers, Listeners, Mains)."""
+        logger.info("Mapping Logical Entry Points...")
         patterns = {
             "Python": [r"if\s+__name__\s*==\s*['\"]__main__['\"]", r"@app\.(route|get|post)"],
             "Go": [r"func\s+main\s*\(\)"],
-            "Node.js": [r"app\.listen", r"server\.listen"],
-            "Java": [r"public\s+static\s+void\s+main"]
+            "Node.js": [r"app\.listen", r"server\.listen", r"exports\.handler"],
+            "Java": [r"public\s+static\s+void\s+main", r"@RestController", r"@Component", r"@Service"]
         }
         
         for root, _, files in os.walk(self.repo_path):
@@ -104,32 +173,21 @@ class PerceptionEngine:
                 ext = os.path.splitext(file)[1]
                 path = os.path.join(root, file)
                 
-                # Check based on language
                 for lang, lang_patterns in patterns.items():
-                    if (lang == "Python" and ext == ".py") or \
-                       (lang == "Go" and ext == ".go") or \
-                       (lang == "Node.js" and (ext == ".js" or ext == ".ts")) or \
-                       (lang == "Java" and ext == ".java"):
-                        
+                    # Basic extension match
+                    valid_ext = False
+                    if lang == "Python" and ext == ".py": valid_ext = True
+                    elif lang == "Go" and ext == ".go": valid_ext = True
+                    elif lang == "Node.js" and ext in [".js", ".ts"]: valid_ext = True
+                    elif lang == "Java" and ext == ".java": valid_ext = True
+                    
+                    if valid_ext:
                         try:
                             with open(path, "r", encoding="utf-8") as f:
-                                # Read first 1000 lines for efficiency
-                                head = "".join([f.readline() for _ in range(1000)])
+                                # Read more lines for Java controllers/services
+                                head = "".join([f.readline() for _ in range(2000)])
                                 for pattern in lang_patterns:
                                     if re.search(pattern, head):
-                                        self.results["entry_points"].append(path)
+                                        self.results["entry_points"].append(os.path.relpath(path, self.repo_path))
                                         break
-                        except Exception:
-                            continue
-
-    def _identify_resource_signatures(self):
-        """Searches for concurrency and storage management patterns."""
-        signatures = {
-            "Concurrency": [r"Threading", r"multiprocessing", r"asyncio", r"ThreadPool", r"go\s+", r"goroutine"],
-            "Cache/In-Memory": [r"Redis", r"cache", r"buffer", r"LRU", r"LocalStorage"],
-            "Disk/State": [r"persistence", r"storage", r"volume", r"pvc", r"sqlite"]
-        }
-        
-        # This is a high-level scan of the whole repo
-        # Limit to critical paths later in Phase 2
-        pass
+                        except Exception: continue
