@@ -1,0 +1,28 @@
+replicaCount: 1
+
+image:
+  repository: myoung34/github-runner
+  tag: "latest"
+  pullPolicy: Always
+
+# GitHub connection — set these via --set or a local override file,
+# do NOT commit real values here.
+github:
+  # Personal Access Token with repo scope.
+  # Create at: https://github.com/settings/tokens
+  # Required scopes: repo (full)
+  accessToken: ""
+  # Full URL of the repository: https://github.com/<owner>/<repo>
+  repoUrl: ""
+  # Label that the workflow uses in runs-on:
+  runnerLabels: "self-hosted"
+  # Runner name shown in GitHub UI
+  runnerName: "minikube-runner"
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi

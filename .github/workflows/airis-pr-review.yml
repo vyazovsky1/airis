@@ -4,14 +4,12 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
     paths:
-      # Trigger only when Kubernetes manifests or Helm charts change
       - "examples/k8s/**"
       - "**/*.yaml"
       - "**/*.yml"
       - "**/Chart.yaml"
       - "**/values.yaml"
 
-# Minimum permissions: read repo + write PR comments
 permissions:
   contents: read
   pull-requests: write
@@ -19,46 +17,30 @@ permissions:
 jobs:
   resource-review:
     name: Analyze K8s Resource Changes
-    # ── Runner options ───────────────────────────────────────────────────────
-    # Option A (default): GitHub-hosted runner — no cluster access, uses mock K8s data.
     runs-on: self-hosted
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Build the AIRIS container image from the repo Dockerfile
-      - name: Build AIRIS image
-        run: docker build -t airis:ci .
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
 
-      # ── Optional: real cluster access via kubeconfig secret ────────────────
-      # If you add a KUBECONFIG_B64 secret (base64-encoded kubeconfig), this
-      # step writes it to disk so the container can call kubectl for live metrics.
-      - name: Write kubeconfig (if available)
-        if: ${{ secrets.KUBECONFIG_B64 != '' }}
-        run: |
-          mkdir -p "$HOME/.kube"
-          echo "${{ secrets.KUBECONFIG_B64 }}" | base64 -d > "$HOME/.kube/config"
-          chmod 600 "$HOME/.kube/config"
-      # ───────────────────────────────────────────────────────────────────────
+      - name: Install dependencies
+        run: pip install -r requirements.txt
 
       - name: Run AIRIS review
         env:
-          OPENAI_API_KEY:  ${{ secrets.OPENAI_API_KEY }}
-          # Uncomment if using Gemini instead:
-          # GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GITHUB_TOKEN:       ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY:  ${{ github.repository }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
-          docker run --rm \
-            --env OPENAI_API_KEY \
-            --env GITHUB_TOKEN \
-            --env GITHUB_REPOSITORY \
-            --volume "$HOME/.kube:/root/.kube:ro" \
-            --volume "${{ github.workspace }}:/app/workspace:ro" \
-            airis:ci \
-              --pr      ${{ github.event.pull_request.number }} \
-              --action  pr \
-              --provider openai \
-              --root    /app/workspace \
-              --log-level INFO
+          python src/main.py \
+            --pr      ${{ github.event.pull_request.number }} \
+            --action  pr \
+            --provider openai \
+            --root    ${{ github.workspace }} \
+            --log-level INFO

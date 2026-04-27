@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "github-runner.fullname" . }}
+  labels:
+    {{- include "github-runner.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "github-runner.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "github-runner.selectorLabels" . | nindent 8 }}
+    spec:
+      # Graceful shutdown: runner deregisters from GitHub before the pod stops
+      terminationGracePeriodSeconds: 60
+
+      containers:
+        - name: runner
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+
+          env:
+            - name: ACCESS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "github-runner.fullname" . }}-token
+                  key: github-token
+            - name: REPO_URL
+              value: {{ .Values.github.repoUrl | quote }}
+            - name: RUNNER_NAME
+              value: {{ .Values.github.runnerName | quote }}
+            - name: LABELS
+              value: {{ .Values.github.runnerLabels | quote }}
+            - name: RUNNER_SCOPE
+              value: "repo"
+            # Ephemeral: runner handles one job then re-registers.
+            # Prevents stale state between jobs.
+            - name: EPHEMERAL
+              value: "1"
+
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
