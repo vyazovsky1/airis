@@ -9,6 +9,10 @@ def setup_logging():
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         stream=sys.stdout
     )
+
+    # Suppress noisy third-party loggers regardless of LOG_LEVEL
+    for _noisy in ("asyncio", "httpx", "httpcore", "openai", "googleapiclient", "google"):
+        logging.getLogger(_noisy).setLevel(logging.WARNING)
     
     # Ensure stdout is using UTF-8
     if sys.stdout.encoding and sys.stdout.encoding.lower() != 'utf-8':

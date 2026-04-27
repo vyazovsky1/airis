@@ -32,12 +32,12 @@ def run_analysis(repo_path: str, workload_name: str, output_dir: str, provider: 
     
     # Phase 2: Logic & Complexity Analysis (The Sieve)
     logger.info("Initializing Phase 2: Logic & Complexity Analysis...")
-    logic_engine = LogicAnalyzer(scanner_artifacts, provider_type=provider)
+    logic_engine = LogicAnalyzer(repo_path, scanner_artifacts, provider_type=provider)
     logic_artifacts = logic_engine.analyze()
     
     # Phase 3: Resource DNA Inference
     logger.info("Initializing Phase 3: Resource DNA Inference...")
-    profiler = ResourceProfiler(scanner_artifacts, logic_artifacts, provider_type=provider)
+    profiler = ResourceProfiler(repo_path, scanner_artifacts, logic_artifacts, provider_type=provider)
     resource_dna = profiler.profile()
     
     # Phase 4: Synthesis & Artifact Suite Generation
