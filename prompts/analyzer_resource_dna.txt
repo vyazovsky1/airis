@@ -3,7 +3,7 @@ Based on the provided "Full-Spectrum" repository intelligence, synthesize a Kube
 You must weigh three distinct intelligence pillars:
 1. DEVELOPER_INTENT (From Documentation): Look for statements about scaling, threading, or memory usage.
 2. INFRASTRUCTURE_BASELINE (From Infrastructure/YAML): Extract current limits/requests and identify environment constraints.
-3. EMERGENT_LOGIC_CLUSTERS (From Code Deep-Dives): Analyze complexity scores and logic summaries to detect hidden resource demands.
+3. EMERGENT_LOGIC_CLUSTERS (From Code Deep-Dives): Analyze resource signals (io, compute, memory, concurrency) and logic summaries to detect hidden resource demands.
 4. DEPENDENCIES_SUMMARY (From dependency manifests): Analyzer dependency resource demands.
 
 

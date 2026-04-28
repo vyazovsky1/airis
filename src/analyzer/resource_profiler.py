@@ -36,19 +36,12 @@ class ResourceProfiler:
             "infrastructure_baseline": self.logic.get("infra_summary", "No infrastructure summary available."),
             "dependencies_summary": self.logic.get("dependencies_summary", []),
             "emergent_logic_clusters": self.logic.get("logic_summaries", {}),
-            "complexity_data": self.logic.get("complexity_matrix", [])
+            "signal_data": self.logic.get("signal_matrix", [])
         }
         
         from core.utils import load_prompt
-        # We use a dedicated 2.0 prompt that understands context fusion
-        raw_prompt = load_prompt("analyzer_resource_dna.txt")
-        user_prompt = raw_prompt.replace("{{ context_json }}", json.dumps(context, indent=2))
-        
-        system_prompt = (
-            "You are a Principal Cloud Architect. Your goal is to synthesize 'Full-Spectrum' repository intelligence "
-            "into a Kubernetes Resource DNA profile. You must weigh 'Developer Intent' (Docs), 'Deployment Baselines' (Infra), "
-            "and 'Emergent Logic' (Code) to produce a reasoned, highly accurate recommendation."
-        )
+        system_prompt = load_prompt("analyzer_resource_dna_system.txt")
+        user_prompt = load_prompt("analyzer_resource_dna.txt").replace("{{ context_json }}", json.dumps(context, indent=2))
         
         try:
             response_text = self.llm.generate(

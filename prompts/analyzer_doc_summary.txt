@@ -1,0 +1,3 @@
+Summarize the following developer documentation to extract logical intent and resource requirements:
+
+{{ doc_data }}

@@ -1,0 +1,3 @@
+Summarize the following infrastructure manifests to extract scaling baselines and environment constraints:
+
+{{ infra_data }}

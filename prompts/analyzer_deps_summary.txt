@@ -1,0 +1,3 @@
+Summarize the following dependency manifests to identify resource-demanding dependencies and environment constraints:
+
+{{ deps_data }}
