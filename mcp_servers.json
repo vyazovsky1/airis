@@ -1,0 +1,27 @@
+{
+  "_comment": "MCP servers for AIRIS. Tools are auto-discovered — MCPManager calls list_tools() on each server at startup.",
+  "_setup": [
+    "Run tools/install_mcp.sh (Linux/macOS/WSL) or tools/install_mcp.ps1 (Windows)",
+    "Add GITHUB_PERSONAL_ACCESS_TOKEN to your .env file",
+    "Kubernetes MCP uses your local kubeconfig (~/.kube/config) automatically"
+  ],
+  "mcpServers": {
+    "kubernetes": {
+      "command": "npx",
+      "args": ["-y", "kubernetes-mcp-server@latest", "--log-level", "0"],
+      "env": {}
+    },
+    "github": {
+      "command": "docker",
+      "args": [
+        "run", "-i", "--rm",
+        "-e", "GITHUB_PERSONAL_ACCESS_TOKEN",
+        "ghcr.io/github/github-mcp-server"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}",
+        "GITHUB_TOOLSETS": "pull_requests,repos"
+      }
+    }
+  }
+}
