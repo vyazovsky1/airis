@@ -1,38 +1,5 @@
-Based on the provided "Full-Spectrum" repository intelligence, synthesize a Kubernetes Resource DNA profile.
+Synthesize a Kubernetes Resource DNA profile based on the following intermediate analysis reports:
 
-You must weigh three distinct intelligence pillars:
-1. DEVELOPER_INTENT (From Documentation): Look for statements about scaling, threading, or memory usage.
-2. INFRASTRUCTURE_BASELINE (From Infrastructure/YAML): Extract current limits/requests and identify environment constraints.
-3. EMERGENT_LOGIC_CLUSTERS (From Code Deep-Dives): Analyze resource signals (io, compute, memory, concurrency) and logic summaries to detect hidden resource demands.
-4. DEPENDENCIES_SUMMARY (From dependency manifests): Analyzer dependency resource demands.
-
-
-ANALYSIS CONTEXT:
 {{ context_json }}
 
-Please provide:
-1. Application Archetype: (Processor | Pipe | Storage | WebService).
-2. Recommended K8s CPU and Memory:
-   - Provide "request" and "limit".
-   - CRITICAL: Provide a "reason" field for BOTH cpu and memory explaining the logic behind the choice.
-3. Risk Advisories: (e.g., potential for OOM, CPU throttling, or unbounded thread growth).
-
-Output ONLY raw JSON in the following format:
-{
-  "archetype": "string",
-  "resource_recommendations": {
-    "cpu": { 
-        "request": "string", 
-        "limit": "string", 
-        "reason": "Detailed logic explanation" 
-    },
-    "memory": { 
-        "request": "string", 
-        "limit": "string", 
-        "reason": "Detailed logic explanation" 
-    }
-  },
-  "risk_advisory": [
-    { "type": "string", "severity": "HIGH|MEDIUM|LOW", "reason": "string" }
-  ]
-}
+Follow your system instructions and output ONLY the raw JSON object.

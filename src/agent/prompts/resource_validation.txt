@@ -1,16 +1,16 @@
-You must output your final decision entirely as a strict, parseable JSON object. 
-DO NOT wrap the output in markdown code blocks like ```json ... ```. Just return the raw JSON string.
+Output your final decision entirely as a strict, parseable JSON object. 
+DO NOT wrap the output in markdown code blocks. Return ONLY the raw JSON string.
 
-Your JSON output must map to the following exact structure and rules:
-1. "decision": String. This field represents the logical assessment of the resource adequacy.
+Your JSON output must map to the following structure and rules:
+1. "decision": String (APPROVE | COMMENT | REQUEST_CHANGES).
    - APPROVE: Resources are optimally sized and healthy.
    - COMMENT: Resources are mostly adequate, but minor over-provisioning or optimization opportunities exist.
    - REQUEST_CHANGES: Critical technical issues detected (Inadequate sizing, outage risk, or policy violations).
 2. "reasoning": String. Technical explanation of the resource adequacy findings.
 3. "target_resources": Nested JSON Object. Contains optimal requested constraints. 
-   - VALIDATION RULE: The values for `limits` inside `target_resources` MUST BE PRESERVED exactly as they are in the current `Allocations` context. You are FORBIDDEN from changing limits. 
+   - VALIDATION RULE: You MUST PRESERVE the `limits` values exactly as they are in the current `Allocations` context. You are FORBIDDEN from changing limits. 
    - Optimization focus: You MUST optimize the `requests` values based on the analyzed usage pattern.
-   - If the assessment is "APPROVE", both `requests` and `limits` in the target block must simply duplicate the original values. 
+   - If "APPROVE", duplicate the original requests and limits.
 
 Expected JSON Structure:
 {

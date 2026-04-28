@@ -40,8 +40,8 @@ class ResourceProfiler:
         }
         
         from core.utils import load_prompt
-        system_prompt = load_prompt("analyzer_resource_dna_system.txt")
-        user_prompt = load_prompt("analyzer_resource_dna.txt").replace("{{ context_json }}", json.dumps(context, indent=2))
+        system_prompt = load_prompt("system_resource_dna.txt", component="analyzer")
+        user_prompt = load_prompt("resource_dna.txt", component="analyzer").replace("{{ context_json }}", json.dumps(context, indent=2))
         
         try:
             response_text = self.llm.generate(

@@ -2,4 +2,5 @@ Self-review your findings to establish a Statistical Confidence level.
 Ask yourself:
 1. Are there enough temporal snapshots (e.g., at least 3) to establish a trend? If not, lower your confidence and warn the user.
 2. Is the variance in usage extremely high? If so, recommend more conservative limits.
+
 Do not enforce hard thresholds without adjusting for this confidence metric. If confidence is low, recommend a "COMMENT" rather than a strict "REQUEST_CHANGES".

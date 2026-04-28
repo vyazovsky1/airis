@@ -48,12 +48,12 @@ def _build_system_prompt(mode: str) -> str:
     All content is combined into a single system message (one role=system turn).
     """
     parts = [
-        load_prompt("system.txt"),
-        load_prompt(f"tools_{mode}.txt"),      # action-specific workflow
-        load_prompt("analyse_resources.txt"),
-        load_prompt("storage_gate.txt"),
-        load_prompt("confidence_calibration.txt"),
-        load_prompt("resource_validation.txt"),
+        load_prompt("system_main.txt", component="agent"),
+        load_prompt(f"tools_{mode}.txt", component="agent"),      # action-specific workflow
+        load_prompt("analyse_resources.txt", component="agent"),
+        load_prompt("storage_gate.txt", component="agent"),
+        load_prompt("confidence_calibration.txt", component="agent"),
+        load_prompt("resource_validation.txt", component="agent"),
     ]
     return "\n\n".join(parts)
 

@@ -1,12 +1,23 @@
 import os
 
-def load_prompt(filename: str) -> str:
-    """Loads a prompt from the prompts/ directory."""
-    # This works from both src/ and src/subfolders
-    # We go up until we find prompts or reach root
+def load_prompt(filename: str, component: str = None) -> str:
+    """Loads a prompt from the specific component's prompts/ directory."""
     current = os.path.dirname(__file__)
+    
+    # If component is provided, try looking in src/<component>/prompts
+    if component:
+        src_dir = os.path.abspath(os.path.join(current, ".."))
+        path = os.path.join(src_dir, component, "prompts", filename)
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as f:
+                return f.read()
+
     while current:
-        path = os.path.join(current, "prompts", filename)
+        if component:
+            path = os.path.join(current, component, "prompts", filename)
+        else:
+            path = os.path.join(current, "prompts", filename)
+            
         if os.path.exists(path):
             with open(path, "r", encoding="utf-8") as f:
                 return f.read()
@@ -22,4 +33,4 @@ def load_prompt(filename: str) -> str:
         with open(path, "r", encoding="utf-8") as f:
             return f.read()
             
-    raise FileNotFoundError(f"Could not find prompt file: {filename}")
+    raise FileNotFoundError(f"Could not find prompt file: {filename} for component: {component}")

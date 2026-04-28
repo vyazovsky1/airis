@@ -79,8 +79,8 @@ class LogicAnalyzer:
             doc_data = "\n".join([f"FILE: {d['file']}\n{d['content']}" for d in docs])
             try:
                 self.analysis_results["doc_summary"] = self.llm.generate(
-                    system_prompt=load_prompt("analyzer_doc_summary_system.txt"),
-                    user_prompt=load_prompt("analyzer_doc_summary.txt").replace("{{ doc_data }}", doc_data),
+                    system_prompt=load_prompt("system_doc_summary.txt", component="analyzer"),
+                    user_prompt=load_prompt("doc_summary.txt", component="analyzer").replace("{{ doc_data }}", doc_data),
                     tier="fast",
                 )
             except Exception as e:
@@ -91,8 +91,8 @@ class LogicAnalyzer:
             infra_data = "\n".join([f"FILE: {i['file']}\n{i['content']}" for i in infra])
             try:
                 self.analysis_results["infra_summary"] = self.llm.generate(
-                    system_prompt=load_prompt("analyzer_infra_summary_system.txt"),
-                    user_prompt=load_prompt("analyzer_infra_summary.txt").replace("{{ infra_data }}", infra_data),
+                    system_prompt=load_prompt("system_infra_summary.txt", component="analyzer"),
+                    user_prompt=load_prompt("infra_summary.txt", component="analyzer").replace("{{ infra_data }}", infra_data),
                     tier="fast",
                 )
             except Exception as e:
@@ -103,8 +103,8 @@ class LogicAnalyzer:
             deps_data = "\n".join([f"FILE: {i['file']}\n{i['content']}" for i in dependencies])
             try:
                 self.analysis_results["dependencies_summary"] = self.llm.generate(
-                    system_prompt=load_prompt("analyzer_deps_summary_system.txt"),
-                    user_prompt=load_prompt("analyzer_deps_summary.txt").replace("{{ deps_data }}", deps_data),
+                    system_prompt=load_prompt("system_deps_summary.txt", component="analyzer"),
+                    user_prompt=load_prompt("deps_summary.txt", component="analyzer").replace("{{ deps_data }}", deps_data),
                     tier="fast",
                 )
             except Exception as e:
@@ -189,8 +189,8 @@ class LogicAnalyzer:
             )
             code_snippet = "".join(lines[:limit])
             summary = self.llm.generate(
-                system_prompt=load_prompt("analyzer_file_system.txt"),
-                user_prompt=load_prompt("analyzer_logic.txt").replace("{{ code_snippet }}", code_snippet),
+                system_prompt=load_prompt("system_file.txt", component="analyzer"),
+                user_prompt=load_prompt("file.txt", component="analyzer").replace("{{ code_snippet }}", code_snippet),
                 tier="fast",
             )
             self.analysis_results["logic_summaries"][rel_path] = summary
@@ -222,8 +222,8 @@ class LogicAnalyzer:
 
         try:
             summary = self.llm.generate(
-                system_prompt=load_prompt("analyzer_batch_system.txt"),
-                user_prompt=load_prompt("analyzer_batch.txt").replace("{{ batch_context }}", batch_context),
+                system_prompt=load_prompt("system_batch.txt", component="analyzer"),
+                user_prompt=load_prompt("batch.txt", component="analyzer").replace("{{ batch_context }}", batch_context),
                 tier="fast",
             )
             self.analysis_results["logic_summaries"][f"BATCH: {dirname}"] = summary

@@ -1,3 +1,5 @@
-Please summarize these background files:
+Analyze the following batch of source code files:
 
 {{ batch_context }}
+
+Follow your system instructions and output the structured markdown summary. Do not include any preamble.

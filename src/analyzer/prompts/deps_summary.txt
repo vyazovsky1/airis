@@ -1,3 +1,5 @@
-Summarize the following dependency manifests to identify resource-demanding dependencies and environment constraints:
+Analyze the following dependency manifests:
 
 {{ deps_data }}
+
+Follow your system instructions and output the structured markdown summary. Do not include any preamble.

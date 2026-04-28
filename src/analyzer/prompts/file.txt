@@ -1,9 +1,5 @@
-Analyze the following source code for:
-1. Core business logic/intent.
-2. Computational complexity.
-3. Potential resource bottlenecks (CPU/Memory/IO).
+Analyze the following source code snippet:
 
-Output your analysis as a concise summary.
-
-CODE:
 {{ code_snippet }}
+
+Follow your system instructions and output the structured markdown summary. Do not include any preamble.

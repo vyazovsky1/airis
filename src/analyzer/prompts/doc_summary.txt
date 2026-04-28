@@ -1,3 +1,5 @@
-Summarize the following developer documentation to extract logical intent and resource requirements:
+Analyze the following developer documentation:
 
 {{ doc_data }}
+
+Follow your system instructions and output the structured markdown summary. Do not include any preamble.

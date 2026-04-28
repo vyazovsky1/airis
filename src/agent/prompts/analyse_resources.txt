@@ -4,6 +4,6 @@ Evaluate adequacy using the following Utilization Band rules (based on Usage vs 
 - Well-utilised: average usage between 50% and 90% of allocated requests.
 - Over-provisioned: average usage < 50% of allocated requests. Wasted capacity.
 
-You must also consider:
-1. Application Archetype: e.g., an API needs CPU headroom for spikes, a Database needs stable Memory.
+You must consider:
+1. Application Archetype: Does it need headroom for spikes or stable limits?
 2. Change Risk Assessment: Reversibility and blast radius of the proposed changes.

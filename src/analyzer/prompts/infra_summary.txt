@@ -1,3 +1,5 @@
-Summarize the following infrastructure manifests to extract scaling baselines and environment constraints:
+Analyze the following infrastructure manifests:
 
 {{ infra_data }}
+
+Follow your system instructions and output the structured markdown summary. Do not include any preamble.
