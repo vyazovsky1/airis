@@ -6,12 +6,12 @@ def setup_logging():
     """Configures global logging for the entire AIRIS platform."""
     logging.basicConfig(
         level=config.LOG_LEVEL,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        stream=sys.stdout
+        format='%(levelname)s - %(name)s - %(message)s',
+        stream=sys.stdout  # sys.stderr
     )
 
     # Suppress noisy third-party loggers regardless of LOG_LEVEL
-    for _noisy in ("asyncio", "httpx", "httpcore", "openai", "googleapiclient", "google"):
+    for _noisy in ("asyncio", "httpx", "httpcore", "openai", "googleapiclient", "google", "mcp", "mcp.client", "mcp.client.stdio"):
         logging.getLogger(_noisy).setLevel(logging.WARNING)
     
     # Ensure stdout is using UTF-8
