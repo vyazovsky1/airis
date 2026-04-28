@@ -115,12 +115,15 @@ async def main() -> None:
         print(result.model_dump_json(indent=2))
     elif args.action == "review":
         from agent import github_utils
+        deployments_json = "\n".join(
+            f"**{d.deployment_name}**:\n*Reasoning*: {d.reasoning}\n```json\n{d.target_resources.model_dump_json(indent=2)}\n```"
+            for d in result.deployments
+        )
         md_comment = (
             f"### AIRIS Resource Review\n"
             f"**Decision:** {result.decision}\n\n"
-            f"**Reasoning:**\n{result.reasoning}\n\n"
-            f"**Target Resources:**\n```json\n"
-            f"{result.target_resources.model_dump_json(indent=2)}\n```"
+            f"**Overall Reasoning:**\n{result.reasoning}\n\n"
+            f"**Deployments:**\n{deployments_json}"
         )
         github_utils.create_pull_request_review(args.pr, md_comment)
 

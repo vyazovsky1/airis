@@ -31,10 +31,15 @@ class TargetResources(BaseModel):
     memory: CpuMemoryLimits
     storage: str
 
+class DeploymentDecision(BaseModel):
+    deployment_name: str
+    reasoning: str
+    target_resources: TargetResources
+
 class AirisDecision(BaseModel):
     decision: str
     reasoning: str
-    target_resources: TargetResources
+    deployments: list[DeploymentDecision]
 
 
 # ---------------------------------------------------------------------------

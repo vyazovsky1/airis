@@ -15,16 +15,22 @@ Your JSON output must map to the following structure and rules:
 Expected JSON Structure:
 {
   "decision": "YOUR_DECISION_HERE",
-  "reasoning": "Detailed explanation...",
-  "target_resources": {
-    "cpu": {
-      "requests": "...",
-      "limits": "..."
-    },
-    "memory": {
-      "requests": "...",
-      "limits": "..."
-    },
-    "storage": "..."
-  }
+  "reasoning": "Overall summary of the resource adequacy findings...",
+  "deployments": [
+    {
+      "deployment_name": "example-deployment",
+      "reasoning": "Detailed explanation of CPU, Memory, and Storage recommendations for this deployment. Storage recommendations MUST align with the deployment manifest PVC schema.",
+      "target_resources": {
+        "cpu": {
+          "requests": "...",
+          "limits": "..."
+        },
+        "memory": {
+          "requests": "...",
+          "limits": "..."
+        },
+        "storage": "..."
+      }
+    }
+  ]
 }
