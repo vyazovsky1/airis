@@ -11,8 +11,9 @@ from pydantic import BaseModel, ValidationError
 from core.config import config
 from core.logger import get_logger
 from core.utils import load_prompt
-from tools.mcp_manager import MCPManager
-import tools.token_stats as token_stats
+from agent.config import agent_config
+from agent.mcp_manager import MCPManager
+import core.token_stats as token_stats
 
 logger = get_logger(__name__)
 
@@ -138,8 +139,8 @@ class AirisAgent:
         AirisDecision JSON response or the turn limit is reached.
         """
         token_stats.reset()
-        tools = self._mcp.openai_tools
-        max_turns = config.MAX_SELF_CORRECTION_RETRIES * 3
+        tools = self._mcp.tools
+        max_turns = agent_config.MAX_SELF_CORRECTION_RETRIES * 3
         result: Optional[AirisDecision] = None
 
         try:
