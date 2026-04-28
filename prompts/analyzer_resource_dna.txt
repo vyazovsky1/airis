@@ -11,7 +11,7 @@ ANALYSIS CONTEXT:
 {{ context_json }}
 
 Please provide:
-1. Workload Archetype: (Processor | Pipe | Storage | WebService).
+1. Application Archetype: (Processor | Pipe | Storage | WebService).
 2. Recommended K8s CPU and Memory:
    - Provide "request" and "limit".
    - CRITICAL: Provide a "reason" field for BOTH cpu and memory explaining the logic behind the choice.

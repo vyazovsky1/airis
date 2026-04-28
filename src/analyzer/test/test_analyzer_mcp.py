@@ -26,8 +26,8 @@ from agent.mcp_manager import MCPManager
 # ---------------------------------------------------------------------------
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
-WORKLOAD_NAME = "nodejs-demoapp"
-TEST_OUTPUT_DIR = os.path.join(PROJECT_ROOT, ".data", "analysis", WORKLOAD_NAME)
+APPLICATION_NAME = "nodejs-demoapp"
+TEST_OUTPUT_DIR = os.path.join(PROJECT_ROOT, ".data", "analysis", APPLICATION_NAME)
 MCP_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "analyzer_mcp_test.json")
 
 os.environ.setdefault("LOG_LEVEL", "WARNING")
@@ -94,16 +94,16 @@ async def show_registered_tools(mcp_manager: MCPManager) -> None:
 async def test_list_artifacts(mcp_manager: MCPManager) -> bool:
     """
     Tool  : list_artifacts
-    Params: workload_name, output_dir
+    Params: application_name, output_dir
     """
     _header("TEST 1: list_artifacts — Catalog of Analysis Artifacts")
-    print(f"  workload_name = {WORKLOAD_NAME}")
+    print(f"  application_name = {APPLICATION_NAME}")
     print(f"  output_dir    = {TEST_OUTPUT_DIR}")
 
     try:
         raw = await mcp_manager.call_tool(
             "analyzer__list_artifacts",
-            {"workload_name": WORKLOAD_NAME, "output_dir": TEST_OUTPUT_DIR},
+            {"application_name": APPLICATION_NAME, "output_dir": TEST_OUTPUT_DIR},
         )
         resp = _parse(raw)
 
@@ -139,7 +139,7 @@ async def test_list_artifacts(mcp_manager: MCPManager) -> bool:
 async def test_get_artifacts_invalid_name(mcp_manager: MCPManager) -> bool:
     """
     Tool  : get_artifacts
-    Params: workload_name, artifact_names=[<invalid>], output_dir
+    Params: application_name, artifact_names=[<invalid>], output_dir
 
     Verifies that an unknown artifact name produces a clear error.
     """
@@ -150,7 +150,7 @@ async def test_get_artifacts_invalid_name(mcp_manager: MCPManager) -> bool:
         raw = await mcp_manager.call_tool(
             "analyzer__get_artifacts",
             {
-                "workload_name": WORKLOAD_NAME,
+                "application_name": APPLICATION_NAME,
                 "artifact_names": ["does_not_exist"],
                 "output_dir": TEST_OUTPUT_DIR,
             },
@@ -183,14 +183,14 @@ async def test_get_artifacts_invalid_name(mcp_manager: MCPManager) -> bool:
 async def test_get_artifacts_all(mcp_manager: MCPManager) -> bool:
     """
     Tool  : get_artifacts
-    Params: workload_name, artifact_names=ALL_ARTIFACT_NAMES, output_dir
+    Params: application_name, artifact_names=ALL_ARTIFACT_NAMES, output_dir
 
     Requests all known artifacts. If analysis has been run, each is returned;
     if not, the top-level "no analysis" error is returned and we verify it
     contains the resolution hint.
     """
     _header("TEST 3: get_artifacts — Fetch All Artifacts")
-    print(f"  workload_name  = {WORKLOAD_NAME}")
+    print(f"  application_name  = {APPLICATION_NAME}")
     print(f"  artifact_names = {ALL_ARTIFACT_NAMES}")
     print(f"  output_dir     = {TEST_OUTPUT_DIR}")
 
@@ -198,7 +198,7 @@ async def test_get_artifacts_all(mcp_manager: MCPManager) -> bool:
         raw = await mcp_manager.call_tool(
             "analyzer__get_artifacts",
             {
-                "workload_name": WORKLOAD_NAME,
+                "application_name": APPLICATION_NAME,
                 "artifact_names": ALL_ARTIFACT_NAMES,
                 "output_dir": TEST_OUTPUT_DIR,
             },
@@ -245,7 +245,7 @@ async def main() -> int:
     print("\n╔" + "="*68 + "╗")
     print("║" + " "*16 + "ANALYZER MCP SERVER — ARTIFACT TOOL TEST SUITE" + " "*6 + "║")
     print("╚" + "="*68 + "╝")
-    print(f"\n  workload   : {WORKLOAD_NAME}")
+    print(f"\n  application   : {APPLICATION_NAME}")
     print(f"  output_dir : {TEST_OUTPUT_DIR}")
     print(f"  mcp_config : {MCP_CONFIG_PATH}")
 

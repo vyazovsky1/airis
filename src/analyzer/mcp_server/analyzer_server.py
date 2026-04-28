@@ -25,10 +25,10 @@ mcp = FastMCP("ARILC Analyzer")
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _resolve_output_dir(workload_name: str, output_dir: Optional[str]) -> str:
+def _resolve_output_dir(application_name: str, output_dir: Optional[str]) -> str:
     if output_dir:
         return output_dir
-    path = os.path.join(_DEFAULT_OUTPUT_BASE, workload_name)
+    path = os.path.join(_DEFAULT_OUTPUT_BASE, application_name)
     os.makedirs(path, exist_ok=True)
     return path
 
@@ -37,38 +37,38 @@ def _safe_json(obj) -> str:
     return json.dumps(obj, indent=2, default=str)
 
 
-def _no_analysis_error(workload_name: str, artifacts_dir: str) -> str:
+def _no_analysis_error(application_name: str, artifacts_dir: str) -> str:
     return _safe_json({
-        "error": f"No analysis artifacts found for workload '{workload_name}'.",
+        "error": f"No analysis artifacts found for application '{application_name}'.",
         "resolution": (
             "Run the ARILC analysis pipeline first:\n"
             f"  python src/analyzer/analyzer_main.py "
-            f"--repo <repo_path> --workload {workload_name} --out {artifacts_dir}"
+            f"--repo <repo_path> --application {application_name} --out {artifacts_dir}"
         ),
     })
 
 
-def _artifact_catalog(workload_name: str) -> dict:
+def _artifact_catalog(application_name: str) -> dict:
     """Maps artifact name → (filename_or_dirname, description)."""
     return {
         "resource_dna": (
-            f"resource_dna_{workload_name}.json",
-            "Machine-readable resource profile: CPU/memory recommendations, workload archetype, risk advisories",
+            f"resource_dna_{application_name}.json",
+            "Machine-readable resource profile: CPU/memory recommendations, application archetype, risk advisories",
         ),
         "intelligence_report": (
-            f"intelligence_report_{workload_name}.md",
+            f"intelligence_report_{application_name}.md",
             "Human-readable report: archetype, resource table, signal matrix, risk advisories",
         ),
         "doc_summary": (
-            f"doc_summary_{workload_name}.md",
+            f"doc_summary_{application_name}.md",
             "LLM summary of documentation files (README, ARCHITECTURE, DESIGN, etc.)",
         ),
         "infra_summary": (
-            f"infra_summary_{workload_name}.md",
+            f"infra_summary_{application_name}.md",
             "LLM summary of infrastructure and deployment files (Dockerfile, k8s manifests, etc.)",
         ),
         "dependencies_summary": (
-            f"dependencies_summary_{workload_name}.md",
+            f"dependencies_summary_{application_name}.md",
             "LLM summary of dependency manifests (package.json, pom.xml, requirements.txt, etc.)",
         ),
         "module_summary": (
@@ -83,17 +83,17 @@ def _artifact_catalog(workload_name: str) -> dict:
 # ---------------------------------------------------------------------------
 
 @mcp.tool()
-def list_artifacts(workload_name: str, output_dir: str = "") -> str:
+def list_artifacts(application_name: str, output_dir: str = "") -> str:
     """
-    List all analysis artifacts for a workload with their filenames and descriptions.
+    List all analysis artifacts for a application with their filenames and descriptions.
     Shows which artifacts already exist on disk. Call this before get_artifacts.
 
     Args:
-        workload_name: Semantic name for the workload.
-        output_dir: Directory where artifacts were written. Defaults to .data/analysis/<workload_name>.
+        application_name: Semantic name for the application.
+        output_dir: Directory where artifacts were written. Defaults to .data/analysis/<application_name>.
     """
-    base = _resolve_output_dir(workload_name, output_dir or None)
-    catalog = _artifact_catalog(workload_name)
+    base = _resolve_output_dir(application_name, output_dir or None)
+    catalog = _artifact_catalog(application_name)
 
     artifacts = []
     for name, (filename, description) in catalog.items():
@@ -111,10 +111,10 @@ def list_artifacts(workload_name: str, output_dir: str = "") -> str:
         artifacts.append(entry)
 
     if not any(a["exists"] for a in artifacts):
-        return _no_analysis_error(workload_name, base)
+        return _no_analysis_error(application_name, base)
 
     return _safe_json({
-        "workload": workload_name,
+        "application": application_name,
         "artifacts_dir": base,
         "artifacts": artifacts,
     })
@@ -126,7 +126,7 @@ def list_artifacts(workload_name: str, output_dir: str = "") -> str:
 
 @mcp.tool()
 def get_artifacts(
-    workload_name: str,
+    application_name: str,
     artifact_names: list[str],
     output_dir: str = "",
 ) -> str:
@@ -135,17 +135,17 @@ def get_artifacts(
     to see what is available and which names to pass.
 
     Args:
-        workload_name: Semantic name for the workload.
+        application_name: Semantic name for the application.
         artifact_names: List of artifact names to retrieve, e.g. ["resource_dna", "doc_summary"].
-        output_dir: Directory where artifacts were written. Defaults to .data/analysis/<workload_name>.
+        output_dir: Directory where artifacts were written. Defaults to .data/analysis/<application_name>.
     """
-    base = _resolve_output_dir(workload_name, output_dir or None)
-    catalog = _artifact_catalog(workload_name)
+    base = _resolve_output_dir(application_name, output_dir or None)
+    catalog = _artifact_catalog(application_name)
 
     # Check if any analysis exists at all before processing individual names
-    catalog_all = _artifact_catalog(workload_name)
+    catalog_all = _artifact_catalog(application_name)
     if not any(os.path.exists(os.path.join(base, f)) for f, _ in catalog_all.values()):
-        return _no_analysis_error(workload_name, base)
+        return _no_analysis_error(application_name, base)
 
     results = {}
     errors = {}
@@ -179,7 +179,7 @@ def get_artifacts(
         except Exception as e:
             errors[name] = str(e)
 
-    response: dict = {"workload": workload_name, "artifacts": results}
+    response: dict = {"application": application_name, "artifacts": results}
     if errors:
         response["errors"] = errors
     return _safe_json(response)

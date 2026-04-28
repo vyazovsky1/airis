@@ -17,17 +17,17 @@ load_dotenv()
 setup_logging()
 logger = get_logger("ARILC-Analyzer")
 
-def run_analysis(repo_path: str, workload_name: str, output_dir: str, provider: str = "openai"):
+def run_analysis(repo_path: str, application_name: str, output_dir: str, provider: str = "openai"):
     """
     Main entry point for the Automated Resource Intelligence & Logic Comprehension (ARILC) engine.
     """
-    logger.info(f"--- Starting ARILC Analysis for workload: {workload_name} ---")
+    logger.info(f"--- Starting ARILC Analysis for application: {application_name} ---")
     logger.info(f"Target Repository Path: {repo_path}")
     token_stats.reset()
     
     # Phase 1: Perception Layer
     logger.info("Initializing Phase 1: Perception & Scanner...")
-    perception = PerceptionEngine(repo_path, workload_name)
+    perception = PerceptionEngine(repo_path, application_name)
     scanner_artifacts = perception.scan()
     
     # Phase 2: Logic & Complexity Analysis (The Sieve)
@@ -44,7 +44,7 @@ def run_analysis(repo_path: str, workload_name: str, output_dir: str, provider: 
     logger.info("Initializing Phase 4: Artifact Generation...")
     try:
         from analyzer.generator.artifact_manager import ArtifactManager
-        generator = ArtifactManager(workload_name, scanner_artifacts, logic_artifacts, resource_dna, output_dir)
+        generator = ArtifactManager(application_name, scanner_artifacts, logic_artifacts, resource_dna, output_dir)
         generator.generate_suite()
     except Exception as e:
         logger.error(f"Failed to generate artifact suite: {e}")
@@ -55,7 +55,7 @@ def run_analysis(repo_path: str, workload_name: str, output_dir: str, provider: 
 def main():
     parser = argparse.ArgumentParser(description="ARILC - Automated Resource Intelligence & Logic Comprehension")
     parser.add_argument("--repo", type=str, required=True, help="Path to the repository to analyze")
-    parser.add_argument("--workload", type=str, required=True, help="Semantic name for the workload")
+    parser.add_argument("--application", type=str, required=True, help="Semantic name for the application")
     parser.add_argument("--out", type=str, default=".data/analysis", help="Directory to store analysis artifacts")
     parser.add_argument("--provider", type=str, choices=["openai", "gemini"], default="openai", help="AI provider to use")
     
@@ -68,11 +68,11 @@ def main():
     # Dynamically resolve output directory if default is used
     out_dir = args.out
     if out_dir == ".data/analysis":
-        out_dir = os.path.join(out_dir, args.workload)
+        out_dir = os.path.join(out_dir, args.application)
         
     os.makedirs(out_dir, exist_ok=True)
     
-    run_analysis(args.repo, args.workload, out_dir, provider=args.provider)
+    run_analysis(args.repo, args.application, out_dir, provider=args.provider)
 
 if __name__ == "__main__":
     main()

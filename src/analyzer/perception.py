@@ -12,11 +12,11 @@ class PerceptionEngine:
     entry points, and resource-heavy signatures.
     """
     
-    def __init__(self, repo_path: str, workload_name: str):
+    def __init__(self, repo_path: str, application_name: str):
         self.repo_path = repo_path
-        self.workload_name = workload_name
+        self.application_name = application_name
         self.results = {
-            "workload": workload_name,
+            "application": application_name,
             "languages": {},
             "stack": [],
             "entry_points": [],

@@ -11,8 +11,8 @@ class ArtifactManager:
     Produces human-readable and machine-consumable analysis results.
     """
     
-    def __init__(self, workload_name: str, perception: Dict[str, Any], logic: Dict[str, Any], resource_dna: Dict[str, Any], output_dir: str):
-        self.workload_name = workload_name
+    def __init__(self, application_name: str, perception: Dict[str, Any], logic: Dict[str, Any], resource_dna: Dict[str, Any], output_dir: str):
+        self.application_name = application_name
         self.perception = perception
         self.logic = logic
         self.dna = resource_dna
@@ -35,12 +35,12 @@ class ArtifactManager:
 
     def _generate_intelligence_report(self):
         """Creates the main human-readable MD report with Full-Spectrum context."""
-        report_path = os.path.join(self.output_dir, f"intelligence_report_{self.workload_name}.md")
+        report_path = os.path.join(self.output_dir, f"intelligence_report_{self.application_name}.md")
         
         cpu_rec = self.dna.get('resource_recommendations', {}).get('cpu', {})
         mem_rec = self.dna.get('resource_recommendations', {}).get('memory', {})
 
-        md_content = f"""# ARILC Intelligence Report: {self.workload_name}
+        md_content = f"""# ARILC Intelligence Report: {self.application_name}
 
 ## Executive Summary
 **Archetype:** {self.dna.get('archetype', 'Unknown')}
@@ -72,7 +72,7 @@ The analysis synthesized intelligence from the following repository pillars:
             md_content += "- *No infrastructure-as-code artifacts discovered.*\n"
 
         md_content += "\n## Logic Comprehension\n"
-        md_content += "The repository logic has been analyzed using entry-point (individual) and directory batch reasoning.\n\n"
+        md_content += "The application source code has been thoroughly analyzed using entry-point (individual) and directory batch reasoning to infer resource requirements directly from the codebase logic.\n\n"
         md_content += "### Resource Signal Matrix\n"
         md_content += "| File | Signals | Lines |\n| :--- | :--- | :--- |\n"
 
@@ -94,7 +94,7 @@ The analysis synthesized intelligence from the following repository pillars:
 
     def _save_resource_dna(self):
         """Saves the machine-readable JSON DNA."""
-        dna_path = os.path.join(self.output_dir, f"resource_dna_{self.workload_name}.json")
+        dna_path = os.path.join(self.output_dir, f"resource_dna_{self.application_name}.json")
         with open(dna_path, "w", encoding="utf-8") as f:
             json.dump(self.dna, f, indent=2)
         logger.info(f"Resource DNA Profile saved: {dna_path}")
@@ -117,15 +117,15 @@ The analysis synthesized intelligence from the following repository pillars:
     def _generate_summaries(self):
         """Dump of Documentation, Infrastructure, Dependency summaries."""
 
-        doc_summary_path = os.path.join(self.output_dir, f"doc_summary_{self.workload_name}.md")
+        doc_summary_path = os.path.join(self.output_dir, f"doc_summary_{self.application_name}.md")
         with open(doc_summary_path, "w", encoding="utf-8") as f:
             f.write(self.logic.get("doc_summary", "No documentation summary available."))
 
-        infra_summary_path = os.path.join(self.output_dir, f"infra_summary_{self.workload_name}.md")
+        infra_summary_path = os.path.join(self.output_dir, f"infra_summary_{self.application_name}.md")
         with open(infra_summary_path, "w", encoding="utf-8") as f:
             f.write(self.logic.get("infra_summary", "No infrastructure summary available."))
 
-        dependencies_summary_path = os.path.join(self.output_dir, f"dependencies_summary_{self.workload_name}.md")
+        dependencies_summary_path = os.path.join(self.output_dir, f"dependencies_summary_{self.application_name}.md")
         with open(dependencies_summary_path, "w", encoding="utf-8") as f:
             f.write(self.logic.get("dependencies_summary", "No dependencies summary available."))
 
@@ -133,7 +133,7 @@ The analysis synthesized intelligence from the following repository pillars:
 
     def _generate_logic_graph(self):
         """Generates a basic Mermaid graph of logic flow."""
-        graph_path = os.path.join(self.output_dir, f"logic_flow_{self.workload_name}.mermaid")
+        graph_path = os.path.join(self.output_dir, f"logic_flow_{self.application_name}.mermaid")
         
         # Simple placeholder logic for now
         content = "graph TD\n"

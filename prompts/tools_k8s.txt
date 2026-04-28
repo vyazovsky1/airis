@@ -4,9 +4,9 @@ Available tools: Kubernetes MCP tools only. Do not use GitHub tools in this mode
 
 Workflow:
 1. List pods and deployments in the target namespace to understand what is running.
-2. Retrieve resource requests and limits declared for each workload.
+2. Retrieve resource requests and limits declared for each application.
 3. Retrieve actual CPU and memory usage metrics.
-4. If any workload has PVC claims, retrieve storage configuration and actual disk usage.
+4. If any application has PVC claims, retrieve storage configuration and actual disk usage.
 5. Identify issues: over-provisioning, under-provisioning, OOM risk, storage waste.
 6. Output your findings and right-sizing recommendations as JSON.
 
