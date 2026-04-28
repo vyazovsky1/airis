@@ -11,7 +11,7 @@ from core.config import config
 from analyzer.perception import PerceptionEngine
 from analyzer.logic_analysis import LogicAnalyzer
 from analyzer.resource_profiler import ResourceProfiler
-import tools.token_stats as token_stats
+import core.token_stats as token_stats
 
 load_dotenv()
 setup_logging()

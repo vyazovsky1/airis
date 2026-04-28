@@ -5,8 +5,12 @@ import argparse
 import asyncio
 import json
 import logging
+import os
 import sys
 from pathlib import Path
+
+# Ensure src/ is on the path when run as a script
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from dotenv import load_dotenv
 
@@ -14,7 +18,7 @@ load_dotenv()
 
 from core.logger import setup_logging, get_logger
 from core.config import config
-from tools.mcp_manager import MCPManager
+from agent.mcp_manager import MCPManager
 from agent.airis_agent import AirisAgent
 
 setup_logging()
@@ -28,7 +32,7 @@ def _configure_log_levels() -> None:
 
 
 def load_servers_config() -> dict:
-    config_path = Path(__file__).parent.parent / "mcp_servers.json"
+    config_path = Path(__file__).parent.parent.parent / "mcp_servers.json"
     if not config_path.exists():
         return {"mcpServers": {}}
     with open(config_path) as fh:
@@ -39,8 +43,8 @@ def print_banner(mcp: MCPManager) -> None:
     print("=" * 60)
     print("  AIRIS - AI Resource Intelligence & Sizing Agent")
     print("=" * 60)
-    if mcp.openai_tools:
-        names = [t["function"]["name"] for t in mcp.openai_tools]
+    if mcp.tools:
+        names = [t["function"]["name"] for t in mcp.tools]
         print(f"  Tools ({len(names)}): {', '.join(names)}")
     else:
         print("  Warning: no MCP tools loaded - check mcp_servers.json")
@@ -110,7 +114,7 @@ async def main() -> None:
         print("\n--- AIRIS Decision ---")
         print(result.model_dump_json(indent=2))
     elif args.action == "review":
-        from tools import github_utils
+        from agent import github_utils
         md_comment = (
             f"### AIRIS Resource Review\n"
             f"**Decision:** {result.decision}\n\n"

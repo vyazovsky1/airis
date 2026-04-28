@@ -2,7 +2,7 @@
 token_stats.py — Global token usage counters for the current process.
 
 Usage (anywhere in the codebase):
-    import tools.token_stats as token_stats
+    import core.token_stats as token_stats
     token_stats.record("thinking", in_tokens, out_tokens)
     token_stats.record("fast", in_tokens, out_tokens)
     token_stats.log_summary()

@@ -22,7 +22,7 @@ class MCPManager:
         self._sessions: dict[str, ClientSession] = {}
         # openai_tool_name -> (server_name, original_mcp_name)
         self._tool_map: dict[str, tuple[str, str]] = {}
-        self.openai_tools: list[dict] = []
+        self.tools: list[dict] = []
 
     async def __aenter__(self) -> "MCPManager":
         await self._exit_stack.__aenter__()
@@ -62,7 +62,7 @@ class MCPManager:
             # OpenAI tool names: max 64 chars, pattern ^[a-zA-Z0-9_-]+$
             safe_name = f"{server_name}__{tool.name}".replace("-", "_")[:64]
             self._tool_map[safe_name] = (server_name, tool.name)
-            self.openai_tools.append({
+            self.tools.append({
                 "type": "function",
                 "function": {
                     "name": safe_name,

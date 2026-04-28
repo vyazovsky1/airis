@@ -7,7 +7,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from dotenv import load_dotenv
 load_dotenv()
 
-from tools import llm_utils
+from scripts import llm_utils
 
 def main():
     print("="*100)

@@ -4,7 +4,7 @@ from openai import OpenAI
 from google import genai
 from core.config import config
 from core.logger import get_logger
-import tools.token_stats as token_stats
+import core.token_stats as token_stats
 
 logger = get_logger(__name__)
 
