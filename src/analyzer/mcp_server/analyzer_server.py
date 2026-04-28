@@ -1,4 +1,4 @@
-"""ARILC Analyzer MCP Server — exposes the analyzer pipeline as MCP tools."""
+"""ARILC Analyzer MCP Server — exposes analysis artifacts as MCP tools."""
 
 import json
 import os
@@ -15,7 +15,6 @@ from mcp.server.fastmcp import FastMCP
 
 load_dotenv()
 
-# Project root is one level above src/
 _PROJECT_ROOT = os.path.abspath(os.path.join(_SRC, ".."))
 _DEFAULT_OUTPUT_BASE = os.path.join(_PROJECT_ROOT, ".data", "analysis")
 
@@ -38,370 +37,152 @@ def _safe_json(obj) -> str:
     return json.dumps(obj, indent=2, default=str)
 
 
-def _load_analysis(path: str) -> Optional[str]:
-    """Return existing analysis JSON if the file exists, else None."""
-    if os.path.exists(path):
-        with open(path, "r", encoding="utf-8") as f:
-            return f.read()
-    return None
-
-
-def _save_analysis(path: str, content: str) -> None:
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(content)
-
-
-# ---------------------------------------------------------------------------
-# Tool 1: Full pipeline
-# ---------------------------------------------------------------------------
-
-@mcp.tool()
-def analyze_repository(
-    repo_path: str,
-    workload_name: str,
-    output_dir: str = "",
-    provider: str = "openai",
-) -> str:
-    """
-    Run the full ARILC pipeline (Perception → Logic Analysis → Resource DNA → Artifacts)
-    on a local repository. Returns the Resource DNA profile as JSON and the path where
-    all artifacts were written.
-
-    Args:
-        repo_path: Absolute path to the repository to analyze.
-        workload_name: Semantic name for the workload (e.g. 'payments-api').
-        output_dir: Directory to write artifacts. Defaults to .data/analysis/<workload_name>.
-        provider: LLM provider — 'openai' (default) or 'gemini'.
-    """
-    if not os.path.isdir(repo_path):
-        return json.dumps({"error": f"repo_path does not exist: {repo_path}"})
-
-    out = _resolve_output_dir(workload_name, output_dir or None)
-
-    dna_path = os.path.join(out, f"resource_dna_{workload_name}.json")
-    existing = _load_analysis(dna_path)
-    if existing is not None:
-        return _safe_json({
-            "workload": workload_name,
-            "resource_dna": json.loads(existing),
-            "artifacts_dir": out,
-            "reused_analysis": True,
-        })
-
-    from core.logger import setup_logging
-    from analyzer.perception import PerceptionEngine
-    from analyzer.logic_analysis import LogicAnalyzer
-    from analyzer.resource_profiler import ResourceProfiler
-    import core.token_stats as token_stats
-
-    setup_logging()
-    token_stats.reset()
-
-    perception = PerceptionEngine(repo_path, workload_name)
-    scanner_artifacts = perception.scan()
-
-    logic_engine = LogicAnalyzer(repo_path, scanner_artifacts, provider_type=provider)
-    logic_artifacts = logic_engine.analyze()
-
-    profiler = ResourceProfiler(repo_path, scanner_artifacts, logic_artifacts, provider_type=provider)
-    resource_dna = profiler.profile()
-
-    try:
-        from analyzer.generator.artifact_manager import ArtifactManager
-        ArtifactManager(workload_name, scanner_artifacts, logic_artifacts, resource_dna, out).generate_suite()
-    except Exception as e:
-        resource_dna["_artifact_error"] = str(e)
-
+def _no_analysis_error(workload_name: str, artifacts_dir: str) -> str:
     return _safe_json({
-        "workload": workload_name,
-        "resource_dna": resource_dna,
-        "artifacts_dir": out,
-        "token_usage": token_stats.get_stats(),
+        "error": f"No analysis artifacts found for workload '{workload_name}'.",
+        "resolution": (
+            "Run the ARILC analysis pipeline first:\n"
+            f"  python src/analyzer/analyzer_main.py "
+            f"--repo <repo_path> --workload {workload_name} --out {artifacts_dir}"
+        ),
     })
 
 
-# ---------------------------------------------------------------------------
-# Tool 2: Phase 1 only — Perception scan (no LLM)
-# ---------------------------------------------------------------------------
-
-@mcp.tool()
-def scan_repository(repo_path: str, workload_name: str) -> str:
-    """
-    Run Phase 1 (Perception) only — no LLM calls. Quickly fingerprints the repository:
-    detected languages, tech stack, entry points, and a count of source files.
-    Use this for a cheap, fast overview before committing to a full analysis.
-
-    Args:
-        repo_path: Absolute path to the repository to scan.
-        workload_name: Semantic name for the workload.
-    """
-    if not os.path.isdir(repo_path):
-        return json.dumps({"error": f"repo_path does not exist: {repo_path}"})
-
-    from core.logger import setup_logging
-    from analyzer.perception import PerceptionEngine
-
-    setup_logging()
-
-    perception = PerceptionEngine(repo_path, workload_name)
-    artifacts = perception.scan()
-
-    return _safe_json({
-        "workload": workload_name,
-        "languages": artifacts["languages"],
-        "stack": artifacts["stack"],
-        "entry_points": artifacts["entry_points"],
-        "source_file_count": len(artifacts["source_manifest"]),
-        "docs_found": [d["file"] for d in artifacts["docs_context"]],
-        "infra_found": [i["file"] for i in artifacts["infra_context"]],
-    })
+def _artifact_catalog(workload_name: str) -> dict:
+    """Maps artifact name → (filename_or_dirname, description)."""
+    return {
+        "resource_dna": (
+            f"resource_dna_{workload_name}.json",
+            "Machine-readable resource profile: CPU/memory recommendations, workload archetype, risk advisories",
+        ),
+        "intelligence_report": (
+            f"intelligence_report_{workload_name}.md",
+            "Human-readable report: archetype, resource table, signal matrix, risk advisories",
+        ),
+        "doc_summary": (
+            f"doc_summary_{workload_name}.md",
+            "LLM summary of documentation files (README, ARCHITECTURE, DESIGN, etc.)",
+        ),
+        "infra_summary": (
+            f"infra_summary_{workload_name}.md",
+            "LLM summary of infrastructure and deployment files (Dockerfile, k8s manifests, etc.)",
+        ),
+        "dependencies_summary": (
+            f"dependencies_summary_{workload_name}.md",
+            "LLM summary of dependency manifests (package.json, pom.xml, requirements.txt, etc.)",
+        ),
+        "module_summary": (
+            "module_summary",
+            "Per-module deep-dive summaries, one markdown file per analyzed source file",
+        ),
+    }
 
 
 # ---------------------------------------------------------------------------
-# Tool 3: Phases 1+2 — Logic & complexity analysis
+# Tool 1: List available artifacts
 # ---------------------------------------------------------------------------
 
 @mcp.tool()
-def analyze_logic(
-    repo_path: str,
-    workload_name: str,
-    provider: str = "openai",
-) -> str:
+def list_artifacts(workload_name: str, output_dir: str = "") -> str:
     """
-    Run Phases 1+2 (Perception + Logic Analysis). Returns the complexity matrix,
-    hot spots, per-file logic summaries, and summaries of documentation, infrastructure,
-    and dependencies. Use this when you need to understand what the application does and
-    how complex it is, without generating a full resource profile.
-
-    Args:
-        repo_path: Absolute path to the repository.
-        workload_name: Semantic name for the workload.
-        provider: LLM provider — 'openai' (default) or 'gemini'.
-    """
-    if not os.path.isdir(repo_path):
-        return json.dumps({"error": f"repo_path does not exist: {repo_path}"})
-
-    analysis_dir = _resolve_output_dir(workload_name, None)
-    logic_analysis_path = os.path.join(analysis_dir, f"logic_analysis_{workload_name}.json")
-    existing = _load_analysis(logic_analysis_path)
-    if existing is not None:
-        result = json.loads(existing)
-        result["reused_analysis"] = True
-        return _safe_json(result)
-
-    from core.logger import setup_logging
-    from analyzer.perception import PerceptionEngine
-    from analyzer.logic_analysis import LogicAnalyzer
-    import core.token_stats as token_stats
-
-    setup_logging()
-    token_stats.reset()
-
-    perception = PerceptionEngine(repo_path, workload_name)
-    scanner_artifacts = perception.scan()
-
-    logic_engine = LogicAnalyzer(repo_path, scanner_artifacts, provider_type=provider)
-    logic_artifacts = logic_engine.analyze()
-
-    result = _safe_json({
-        "workload": workload_name,
-        "languages": scanner_artifacts["languages"],
-        "stack": scanner_artifacts["stack"],
-        "entry_points": scanner_artifacts["entry_points"],
-        "signal_matrix": logic_artifacts["signal_matrix"],
-        "logic_summaries": logic_artifacts["logic_summaries"],
-        "doc_summary": logic_artifacts.get("doc_summary", ""),
-        "infra_summary": logic_artifacts.get("infra_summary", ""),
-        "dependencies_summary": logic_artifacts.get("dependencies_summary", ""),
-        "token_usage": token_stats.get_stats(),
-    })
-    _save_analysis(logic_analysis_path, result)
-    return result
-
-
-# ---------------------------------------------------------------------------
-# Tool 4: Phase 3 only — Resource DNA from pre-computed artifacts
-# ---------------------------------------------------------------------------
-
-@mcp.tool()
-def profile_resources(
-    repo_path: str,
-    workload_name: str,
-    perception_json: str,
-    logic_json: str,
-    provider: str = "openai",
-) -> str:
-    """
-    Run Phase 3 (Resource DNA Inference) only, using pre-computed perception and logic
-    artifacts. Use this for re-runs or when you already have scan/analyze_logic output
-    and only need the resource recommendations regenerated.
-
-    Args:
-        repo_path: Absolute path to the repository (used for context only).
-        workload_name: Semantic name for the workload.
-        perception_json: JSON string output from scan_repository.
-        logic_json: JSON string output from analyze_logic.
-        provider: LLM provider — 'openai' (default) or 'gemini'.
-    """
-    try:
-        perception_artifacts = json.loads(perception_json)
-        logic_artifacts = json.loads(logic_json)
-    except json.JSONDecodeError as e:
-        return json.dumps({"error": f"Invalid JSON input: {e}"})
-
-    from core.logger import setup_logging
-    from analyzer.resource_profiler import ResourceProfiler
-    import core.token_stats as token_stats
-
-    setup_logging()
-    token_stats.reset()
-
-    profiler = ResourceProfiler(repo_path, perception_artifacts, logic_artifacts, provider_type=provider)
-    resource_dna = profiler.profile()
-
-    return _safe_json({
-        "workload": workload_name,
-        "resource_dna": resource_dna,
-        "token_usage": token_stats.get_stats(),
-    })
-
-
-# ---------------------------------------------------------------------------
-# Tool 5: Quick developer-intent summary from docs only
-# ---------------------------------------------------------------------------
-
-@mcp.tool()
-def get_workload_intent(
-    repo_path: str,
-    workload_name: str,
-    provider: str = "openai",
-) -> str:
-    """
-    Extract a developer-intent summary by reading only documentation files (README,
-    ARCHITECTURE, DESIGN, etc.) and dependency manifests from the repository — no
-    source code analysis. Much faster than a full analyze_logic call. Useful as a
-    pre-flight step before a K8s resource review to understand what the workload is
-    meant to do.
-
-    Args:
-        repo_path: Absolute path to the repository.
-        workload_name: Semantic name for the workload.
-        provider: LLM provider — 'openai' (default) or 'gemini'.
-    """
-    if not os.path.isdir(repo_path):
-        return json.dumps({"error": f"repo_path does not exist: {repo_path}"})
-
-    analysis_dir = _resolve_output_dir(workload_name, None)
-    intent_analysis_path = os.path.join(analysis_dir, f"intent_analysis_{workload_name}.json")
-    existing = _load_analysis(intent_analysis_path)
-    if existing is not None:
-        result = json.loads(existing)
-        result["reused_analysis"] = True
-        return _safe_json(result)
-
-    from core.logger import setup_logging
-    from analyzer.perception import PerceptionEngine
-    from core.llm_provider import get_llm_provider
-    from core.utils import load_prompt
-    import core.token_stats as token_stats
-
-    setup_logging()
-    token_stats.reset()
-
-    perception = PerceptionEngine(repo_path, workload_name)
-    artifacts = perception.scan()
-
-    llm = get_llm_provider(provider)
-    summaries = {}
-
-    docs = artifacts.get("docs_context", [])
-    if docs:
-        doc_data = "\n".join([f"FILE: {d['file']}\n{d['content']}" for d in docs])
-        try:
-            summaries["developer_intent"] = llm.generate(
-                system_prompt=load_prompt("analyzer_doc_summary_system.txt"),
-                user_prompt=load_prompt("analyzer_doc_summary.txt").replace("{{ doc_data }}", doc_data),
-                tier="fast",
-            )
-        except Exception as e:
-            summaries["developer_intent"] = f"[Failed: {e}]"
-
-    manifests = artifacts.get("manifest_context", [])
-    if manifests:
-        deps_data = "\n".join([f"FILE: {m['file']}\n{m['content']}" for m in manifests])
-        try:
-            summaries["dependency_intent"] = llm.generate(
-                system_prompt=load_prompt("analyzer_deps_summary_system.txt"),
-                user_prompt=load_prompt("analyzer_deps_summary.txt").replace("{{ deps_data }}", deps_data),
-                tier="fast",
-            )
-        except Exception as e:
-            summaries["dependency_intent"] = f"[Failed: {e}]"
-
-    result = _safe_json({
-        "workload": workload_name,
-        "languages": artifacts["languages"],
-        "stack": artifacts["stack"],
-        "summaries": summaries,
-        "token_usage": token_stats.get_stats(),
-    })
-    _save_analysis(intent_analysis_path, result)
-    return result
-
-
-# ---------------------------------------------------------------------------
-# Tool 6: Read a previously generated analysis artifact
-# ---------------------------------------------------------------------------
-
-@mcp.tool()
-def read_analysis_artifact(
-    workload_name: str,
-    artifact_type: str,
-    output_dir: str = "",
-) -> str:
-    """
-    Read a previously generated ARILC artifact for a workload. Useful for caching:
-    run analyze_repository once, then read results in subsequent agent turns without
-    re-running the expensive pipeline.
+    List all analysis artifacts for a workload with their filenames and descriptions.
+    Shows which artifacts already exist on disk. Call this before get_artifacts.
 
     Args:
         workload_name: Semantic name for the workload.
-        artifact_type: One of: 'resource_dna', 'intelligence_report', 'signal_heatmap',
-                       'doc_summary', 'infra_summary', 'dependencies_summary', 'token_usage'.
         output_dir: Directory where artifacts were written. Defaults to .data/analysis/<workload_name>.
     """
     base = _resolve_output_dir(workload_name, output_dir or None)
+    catalog = _artifact_catalog(workload_name)
 
-    filename_map = {
-        "resource_dna":          f"resource_dna_{workload_name}.json",
-        "intelligence_report":   f"intelligence_report_{workload_name}.md",
-        "signal_heatmap":        f"signal_heatmap_{workload_name}.csv",
-        "doc_summary":           f"doc_summary_{workload_name}.md",
-        "infra_summary":         f"infra_summary_{workload_name}.md",
-        "dependencies_summary":  f"dependencies_summary_{workload_name}.md",
-        "token_usage":           "token_usage.json",
-    }
+    artifacts = []
+    for name, (filename, description) in catalog.items():
+        path = os.path.join(base, filename)
+        entry = {
+            "name": name,
+            "file": filename,
+            "description": description,
+            "exists": os.path.exists(path),
+        }
+        if name == "module_summary" and os.path.isdir(path):
+            entry["modules"] = sorted(
+                f for f in os.listdir(path) if f.endswith(".md")
+            )
+        artifacts.append(entry)
 
-    if artifact_type not in filename_map:
-        return json.dumps({
-            "error": f"Unknown artifact_type '{artifact_type}'. Valid values: {list(filename_map.keys())}"
-        })
+    if not any(a["exists"] for a in artifacts):
+        return _no_analysis_error(workload_name, base)
 
-    path = os.path.join(base, filename_map[artifact_type])
-    if not os.path.exists(path):
-        return json.dumps({"error": f"Artifact not found: {path}. Run analyze_repository first."})
+    return _safe_json({
+        "workload": workload_name,
+        "artifacts_dir": base,
+        "artifacts": artifacts,
+    })
 
-    with open(path, "r", encoding="utf-8") as f:
-        content = f.read()
 
-    if artifact_type in ("resource_dna", "token_usage"):
+# ---------------------------------------------------------------------------
+# Tool 2: Get artifact contents
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+def get_artifacts(
+    workload_name: str,
+    artifact_names: list[str],
+    output_dir: str = "",
+) -> str:
+    """
+    Return the contents of one or more analysis artifacts. Use list_artifacts first
+    to see what is available and which names to pass.
+
+    Args:
+        workload_name: Semantic name for the workload.
+        artifact_names: List of artifact names to retrieve, e.g. ["resource_dna", "doc_summary"].
+        output_dir: Directory where artifacts were written. Defaults to .data/analysis/<workload_name>.
+    """
+    base = _resolve_output_dir(workload_name, output_dir or None)
+    catalog = _artifact_catalog(workload_name)
+
+    # Check if any analysis exists at all before processing individual names
+    catalog_all = _artifact_catalog(workload_name)
+    if not any(os.path.exists(os.path.join(base, f)) for f, _ in catalog_all.values()):
+        return _no_analysis_error(workload_name, base)
+
+    results = {}
+    errors = {}
+
+    for name in artifact_names:
+        if name not in catalog:
+            errors[name] = f"Unknown artifact. Valid names: {list(catalog.keys())}"
+            continue
+
+        filename, _ = catalog[name]
+        path = os.path.join(base, filename)
+
+        if not os.path.exists(path):
+            errors[name] = f"Artifact '{name}' not found at {path}."
+            continue
+
         try:
-            return _safe_json(json.loads(content))
-        except json.JSONDecodeError:
-            pass
+            if name == "module_summary":
+                files = {}
+                for fname in sorted(os.listdir(path)):
+                    if fname.endswith(".md"):
+                        with open(os.path.join(path, fname), "r", encoding="utf-8") as f:
+                            files[fname] = f.read()
+                results[name] = files
+            elif filename.endswith(".json"):
+                with open(path, "r", encoding="utf-8") as f:
+                    results[name] = json.load(f)
+            else:
+                with open(path, "r", encoding="utf-8") as f:
+                    results[name] = f.read()
+        except Exception as e:
+            errors[name] = str(e)
 
-    return content
+    response: dict = {"workload": workload_name, "artifacts": results}
+    if errors:
+        response["errors"] = errors
+    return _safe_json(response)
 
 
 # ---------------------------------------------------------------------------

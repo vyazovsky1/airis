@@ -1,6 +1,5 @@
 import os
 import json
-import csv
 from typing import Dict, List, Any
 from core.logger import get_logger
 
@@ -21,8 +20,8 @@ class ArtifactManager:
         
         # Ensure output structure exists
         os.makedirs(output_dir, exist_ok=True)
-        self.dossier_dir = os.path.join(output_dir, "module_dossiers")
-        os.makedirs(self.dossier_dir, exist_ok=True)
+        self.module_summary_dir = os.path.join(output_dir, "module_summary")
+        os.makedirs(self.module_summary_dir, exist_ok=True)
 
     def generate_suite(self):
         """Generates the full suite of ARILC artifacts."""
@@ -30,10 +29,8 @@ class ArtifactManager:
         
         self._generate_intelligence_report()
         self._save_resource_dna()
-        self._generate_signal_heatmap()
-        self._generate_module_dossiers()
+        self._generate_module_summaries()
         self._generate_summaries()
-        #self._generate_logic_graph()
         self._save_token_usage()
 
     def _generate_intelligence_report(self):
@@ -102,38 +99,20 @@ The analysis synthesized intelligence from the following repository pillars:
             json.dump(self.dna, f, indent=2)
         logger.info(f"Resource DNA Profile saved: {dna_path}")
 
-    def _generate_signal_heatmap(self):
-        """Generates a CSV heatmap of resource signals per file."""
-        csv_path = os.path.join(self.output_dir, f"signal_heatmap_{self.workload_name}.csv")
-        try:
-            with open(csv_path, "w", newline="", encoding="utf-8") as f:
-                writer = csv.writer(f)
-                writer.writerow(["file", "resource_signals", "has_signals", "line_count"])
-                for item in self.logic.get("signal_matrix", []):
-                    writer.writerow([
-                        item["file"],
-                        "|".join(item.get("resource_signals", [])),
-                        item.get("has_signals", False),
-                        item.get("line_count", 0),
-                    ])
-            logger.info(f"Signal heatmap generated: {csv_path}")
-        except Exception as e:
-            logger.error(f"Failed to generate CSV heatmap: {e}")
-
-    def _generate_module_dossiers(self):
-        """Creates detailed deep-dive docs for each analyzed file."""
+    def _generate_module_summaries(self):
+        """Creates a per-module summary markdown for each analyzed source file."""
         for file_path, summary in self.logic.get("logic_summaries", {}).items():
             file_name = os.path.basename(file_path)
-            dossier_path = os.path.join(self.dossier_dir, f"{file_name}.md")
-            
-            content = f"# Module Dossier: {file_name}\n\n"
+            out_path = os.path.join(self.module_summary_dir, f"{file_name}.md")
+
+            content = f"# Module Summary: {file_name}\n\n"
             content += f"**Source Path:** `{file_path}`\n\n"
             content += "## Logical Analysis\n"
             content += summary
-            
-            with open(dossier_path, "w", encoding="utf-8") as f:
+
+            with open(out_path, "w", encoding="utf-8") as f:
                 f.write(content)
-        logger.info(f"Module Dossiers generated in {self.dossier_dir}")
+        logger.info(f"Module summaries generated in {self.module_summary_dir}")
 
     def _generate_summaries(self):
         """Dump of Documentation, Infrastructure, Dependency summaries."""
