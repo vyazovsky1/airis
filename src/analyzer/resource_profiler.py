@@ -41,7 +41,7 @@ class ResourceProfiler:
         
         from core.utils import load_prompt
         # We use a dedicated 2.0 prompt that understands context fusion
-        raw_prompt = load_prompt("analyzer_resource_dna_v2.txt")
+        raw_prompt = load_prompt("analyzer_resource_dna.txt")
         user_prompt = raw_prompt.replace("{{ context_json }}", json.dumps(context, indent=2))
         
         system_prompt = (
