@@ -38,6 +38,20 @@ def _safe_json(obj) -> str:
     return json.dumps(obj, indent=2, default=str)
 
 
+def _load_analysis(path: str) -> Optional[str]:
+    """Return existing analysis JSON if the file exists, else None."""
+    if os.path.exists(path):
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read()
+    return None
+
+
+def _save_analysis(path: str, content: str) -> None:
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content)
+
+
 # ---------------------------------------------------------------------------
 # Tool 1: Full pipeline
 # ---------------------------------------------------------------------------
@@ -64,6 +78,16 @@ def analyze_repository(
         return json.dumps({"error": f"repo_path does not exist: {repo_path}"})
 
     out = _resolve_output_dir(workload_name, output_dir or None)
+
+    dna_path = os.path.join(out, f"resource_dna_{workload_name}.json")
+    existing = _load_analysis(dna_path)
+    if existing is not None:
+        return _safe_json({
+            "workload": workload_name,
+            "resource_dna": json.loads(existing),
+            "artifacts_dir": out,
+            "reused_analysis": True,
+        })
 
     from core.logger import setup_logging
     from analyzer.perception import PerceptionEngine
@@ -158,6 +182,14 @@ def analyze_logic(
     if not os.path.isdir(repo_path):
         return json.dumps({"error": f"repo_path does not exist: {repo_path}"})
 
+    analysis_dir = _resolve_output_dir(workload_name, None)
+    logic_analysis_path = os.path.join(analysis_dir, f"logic_analysis_{workload_name}.json")
+    existing = _load_analysis(logic_analysis_path)
+    if existing is not None:
+        result = json.loads(existing)
+        result["reused_analysis"] = True
+        return _safe_json(result)
+
     from core.logger import setup_logging
     from analyzer.perception import PerceptionEngine
     from analyzer.logic_analysis import LogicAnalyzer
@@ -172,7 +204,7 @@ def analyze_logic(
     logic_engine = LogicAnalyzer(repo_path, scanner_artifacts, provider_type=provider)
     logic_artifacts = logic_engine.analyze()
 
-    return _safe_json({
+    result = _safe_json({
         "workload": workload_name,
         "languages": scanner_artifacts["languages"],
         "stack": scanner_artifacts["stack"],
@@ -184,6 +216,8 @@ def analyze_logic(
         "dependencies_summary": logic_artifacts.get("dependencies_summary", ""),
         "token_usage": token_stats.get_stats(),
     })
+    _save_analysis(logic_analysis_path, result)
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -258,6 +292,14 @@ def get_workload_intent(
     if not os.path.isdir(repo_path):
         return json.dumps({"error": f"repo_path does not exist: {repo_path}"})
 
+    analysis_dir = _resolve_output_dir(workload_name, None)
+    intent_analysis_path = os.path.join(analysis_dir, f"intent_analysis_{workload_name}.json")
+    existing = _load_analysis(intent_analysis_path)
+    if existing is not None:
+        result = json.loads(existing)
+        result["reused_analysis"] = True
+        return _safe_json(result)
+
     from core.logger import setup_logging
     from analyzer.perception import PerceptionEngine
     from core.llm_provider import get_llm_provider
@@ -297,13 +339,15 @@ def get_workload_intent(
         except Exception as e:
             summaries["dependency_intent"] = f"[Failed: {e}]"
 
-    return _safe_json({
+    result = _safe_json({
         "workload": workload_name,
         "languages": artifacts["languages"],
         "stack": artifacts["stack"],
         "summaries": summaries,
         "token_usage": token_stats.get_stats(),
     })
+    _save_analysis(intent_analysis_path, result)
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -323,7 +367,7 @@ def read_analysis_artifact(
 
     Args:
         workload_name: Semantic name for the workload.
-        artifact_type: One of: 'resource_dna', 'intelligence_report', 'complexity_heatmap',
+        artifact_type: One of: 'resource_dna', 'intelligence_report', 'signal_heatmap',
                        'doc_summary', 'infra_summary', 'dependencies_summary', 'token_usage'.
         output_dir: Directory where artifacts were written. Defaults to .data/analysis/<workload_name>.
     """
@@ -332,7 +376,7 @@ def read_analysis_artifact(
     filename_map = {
         "resource_dna":          f"resource_dna_{workload_name}.json",
         "intelligence_report":   f"intelligence_report_{workload_name}.md",
-        "complexity_heatmap":    f"complexity_heatmap_{workload_name}.csv",
+        "signal_heatmap":        f"signal_heatmap_{workload_name}.csv",
         "doc_summary":           f"doc_summary_{workload_name}.md",
         "infra_summary":         f"infra_summary_{workload_name}.md",
         "dependencies_summary":  f"dependencies_summary_{workload_name}.md",

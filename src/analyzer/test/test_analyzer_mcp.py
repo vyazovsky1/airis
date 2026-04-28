@@ -345,7 +345,7 @@ async def test_read_analysis_artifact(mcp_manager: MCPManager) -> bool:
     artifact_types = [
         "resource_dna",
         "intelligence_report",
-        "complexity_heatmap",
+        "signal_heatmap",
         "doc_summary",
         "infra_summary",
         "dependencies_summary",

@@ -104,7 +104,7 @@ The analysis synthesized intelligence from the following repository pillars:
 
     def _generate_signal_heatmap(self):
         """Generates a CSV heatmap of resource signals per file."""
-        csv_path = os.path.join(self.output_dir, f"complexity_heatmap_{self.workload_name}.csv")
+        csv_path = os.path.join(self.output_dir, f"signal_heatmap_{self.workload_name}.csv")
         try:
             with open(csv_path, "w", newline="", encoding="utf-8") as f:
                 writer = csv.writer(f)
