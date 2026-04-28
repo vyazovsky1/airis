@@ -6,6 +6,11 @@
     "Kubernetes MCP uses your local kubeconfig (~/.kube/config) automatically"
   ],
   "mcpServers": {
+    "analyzer": {
+      "command": "python",
+      "args": ["src/analyzer/mcp_server/analyzer_server.py"],
+      "env": {}
+    },
     "kubernetes": {
       "command": "npx",
       "args": ["-y", "kubernetes-mcp-server@latest", "--log-level", "0"],
