@@ -10,10 +10,11 @@ AIRIS is an AI agent that analyzes Kubernetes workload resource allocations — 
 2. [Clone the Repository](#clone-the-repository)
 3. [Prerequisites](#prerequisites)
 4. [Installation](#installation)
-5. [Configuration](#configuration)
-6. [Running the Agent](#running-the-agent)
-7. [CLI Reference](#cli-reference)
-8. [Project Structure](#project-structure)
+5. [MCP Tool Setup](#mcp-tool-setup)
+6. [Configuration](#configuration)
+7. [Running the Agent](#running-the-agent)
+8. [CLI Reference](#cli-reference)
+9. [Project Structure](#project-structure)
 
 ---
 
@@ -89,6 +90,65 @@ pip install -r requirements.txt
 | `google-genai` | Google Gemini provider |
 | `pydantic >= 2.0` | Structured data validation |
 | `python-dotenv` | Environment variable loading |
+| `mcp >= 1.0.0` | MCP client (Kubernetes + GitHub tool servers) |
+
+---
+
+## MCP Tool Setup
+
+AIRIS connects to real Kubernetes and GitHub MCP servers for live data collection. Tools are discovered automatically at startup — nothing is hardcoded.
+
+### Requirements
+
+- **Node.js 18+** — for the Kubernetes MCP server (runs via `npx`)
+- **Docker** — for the GitHub MCP server (recommended), OR a pre-built `github-mcp-server` binary from [releases](https://github.com/github/github-mcp-server/releases)
+- **GitHub Personal Access Token** — classic token with `repo` scope
+
+### Install MCP Servers
+
+**Linux / macOS / WSL:**
+
+```bash
+chmod +x tools/install_mcp.sh && ./tools/install_mcp.sh
+```
+
+**Windows (PowerShell):**
+
+```powershell
+.\tools\install_mcp.ps1
+```
+
+The scripts install `kubernetes-mcp-server` via `npm install -g` and pull the `ghcr.io/github/github-mcp-server` Docker image.
+
+### GitHub Binary Alternative
+
+If Docker is unavailable, download the pre-built `github-mcp-server` binary from the [GitHub releases page](https://github.com/github/github-mcp-server/releases), add it to your PATH, then update `mcp_servers.json`:
+
+```json
+"github": {
+  "command": "github-mcp-server",
+  "args": ["stdio"],
+  "env": { "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}" }
+}
+```
+
+### Configure
+
+Add to `.env`:
+
+```env
+GITHUB_PERSONAL_ACCESS_TOKEN=ghp_your_token_here
+```
+
+Kubernetes MCP uses your local kubeconfig (`~/.kube/config`) automatically.
+
+### Verify
+
+```bash
+python src/main.py --action dry-run
+```
+
+The startup banner lists all discovered tools. If the tools list is empty, check that the MCP servers are installed and your `.env` is configured correctly.
 
 ---
 
@@ -184,13 +244,16 @@ python src/main.py --pr 42 --workload payments-api --provider gemini --root ./ap
 ```
 airis/
 ├── src/
-│   ├── main.py              # CLI entrypoint & argument parser
-│   ├── config.py            # Environment-backed configuration singleton
-│   ├── orchestrator/        # Agent loop: perceive → reason → act → check
-│   └── tools/               # MCP tool wrappers (Kubernetes, GitHub)
-├── prompts/                 # Versioned LLM prompt templates (.txt / .jinja2)
-├── examples/                # Example manifests and fixture data for testing
-├── .data/                   # All local state: intent caches, token logs, CSV findings
+│   ├── main.py              # CLI entrypoint (mirrors examples/agent/agent.py)
+│   ├── agent/               # AirisAgent — agentic loop over MCP tools
+│   ├── tools/               # mcp_manager.py + tool utilities
+│   ├── analyzer/            # ARILC static analysis pipeline
+│   └── core/                # Config, logger, LLM provider abstraction
+├── prompts/                 # Versioned LLM prompt templates
+├── mcp_servers.json         # MCP server config (Kubernetes + GitHub)
+├── tools/                   # install_mcp.sh / install_mcp.ps1
+├── examples/                # Reference agent implementation + mock data
+├── .data/                   # Local state: caches, token logs, CSV findings
 ├── requirements.txt
 ├── .env                     # Local configuration (do not commit)
 ├── solution_design.md       # Full solution design document
