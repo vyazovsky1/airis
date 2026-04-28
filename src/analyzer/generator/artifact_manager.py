@@ -30,7 +30,7 @@ class ArtifactManager:
         
         self._generate_intelligence_report()
         self._save_resource_dna()
-        self._generate_complexity_heatmap()
+        self._generate_signal_heatmap()
         self._generate_module_dossiers()
         self._generate_summaries()
         #self._generate_logic_graph()
@@ -75,13 +75,13 @@ The analysis synthesized intelligence from the following repository pillars:
             md_content += "- *No infrastructure-as-code artifacts discovered.*\n"
 
         md_content += "\n## Logic Comprehension\n"
-        md_content += "The repository logic has been analyzed using a tiered reasoning approach (Thinking, Fast, and Batch).\n\n"
-        md_content += "### Complexity Matrix\n"
-        md_content += "| Component | Max Complexity | Tier Used |\n| :--- | :--- | :--- |\n"
-        
-        for item in self.logic.get("complexity_matrix", []):
-            tier = "Thinking" if item.get("escalate") else "Fast"
-            md_content += f"| `{os.path.basename(item['file'])}` | {item['max_complexity']} | {tier} |\n"
+        md_content += "The repository logic has been analyzed using entry-point (individual) and directory batch reasoning.\n\n"
+        md_content += "### Resource Signal Matrix\n"
+        md_content += "| File | Signals | Lines |\n| :--- | :--- | :--- |\n"
+
+        for item in self.logic.get("signal_matrix", []):
+            sigs = ", ".join(item.get("resource_signals", [])) or "—"
+            md_content += f"| `{os.path.basename(item['file'])}` | {sigs} | {item.get('line_count', '?')} |\n"
             
         md_content += "\n## Risk Advisories\n"
         risk_list = self.dna.get("risk_advisory", [])
@@ -102,16 +102,21 @@ The analysis synthesized intelligence from the following repository pillars:
             json.dump(self.dna, f, indent=2)
         logger.info(f"Resource DNA Profile saved: {dna_path}")
 
-    def _generate_complexity_heatmap(self):
-        """Generates a CSV heatmap of file complexities."""
+    def _generate_signal_heatmap(self):
+        """Generates a CSV heatmap of resource signals per file."""
         csv_path = os.path.join(self.output_dir, f"complexity_heatmap_{self.workload_name}.csv")
         try:
             with open(csv_path, "w", newline="", encoding="utf-8") as f:
                 writer = csv.writer(f)
-                writer.writerow(["file", "max_complexity", "escalated"])
-                for item in self.logic.get("complexity_matrix", []):
-                    writer.writerow([item["file"], item["max_complexity"], item["escalate"]])
-            logger.info(f"Complexity Heatmap generated: {csv_path}")
+                writer.writerow(["file", "resource_signals", "has_signals", "line_count"])
+                for item in self.logic.get("signal_matrix", []):
+                    writer.writerow([
+                        item["file"],
+                        "|".join(item.get("resource_signals", [])),
+                        item.get("has_signals", False),
+                        item.get("line_count", 0),
+                    ])
+            logger.info(f"Signal heatmap generated: {csv_path}")
         except Exception as e:
             logger.error(f"Failed to generate CSV heatmap: {e}")
 
@@ -164,7 +169,7 @@ The analysis synthesized intelligence from the following repository pillars:
 
     def _save_token_usage(self):
         """Saves token usage summary for cost tracking."""
-        import tools.token_stats as token_stats
+        import core.token_stats as token_stats
         usage_path = os.path.join(self.output_dir, "token_usage.json")
         stats = token_stats.get_stats()
         

@@ -20,7 +20,6 @@ class PerceptionEngine:
             "languages": {},
             "stack": [],
             "entry_points": [],
-            "heavy_libs": [],
             "source_manifest": [],
             "docs_context": [],
             "infra_context": [],
@@ -95,21 +94,6 @@ class PerceptionEngine:
                             })
                     except Exception: pass
                     
-                    if file == "requirements.txt":
-                        self._scan_python_deps(manifest_path)
-
-    def _scan_python_deps(self, path: str):
-        """Scans requirements.txt for 'Heavy' libraries."""
-        heavy_patterns = ["pandas", "numpy", "tensorflow", "torch", "scipy", "grpcio", "celery", "django", "flask"]
-        try:
-            with open(path, "r", encoding="utf-8") as f:
-                content = f.read().lower()
-                for lib in heavy_patterns:
-                    if lib in content:
-                        self.results["heavy_libs"].append(f"Python-{lib}")
-        except Exception as e:
-            logger.warning(f"Failed to read requirements.txt: {e}")
-
     def _harvest_documentation(self):
         """Recursively scans for and ingests documentation for logical intent."""
         logger.info("Harvesting Documentation Context...")
