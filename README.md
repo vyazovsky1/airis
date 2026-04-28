@@ -7,12 +7,12 @@ AIRIS is an AI agent that analyzes Kubernetes workload resource allocations — 
 ## Table of Contents
 
 1. [Quick Start](#quick-start)
-2. [Clone the Repository](#clone-the-repository)
-3. [Prerequisites](#prerequisites)
-4. [Installation](#installation)
-5. [MCP Tool Setup](#mcp-tool-setup)
-6. [Configuration](#configuration)
-7. [Running the Agent](#running-the-agent)
+2. [Prerequisites](#prerequisites)
+3. [Installation](#installation)
+4. [MCP Tool Setup](#mcp-tool-setup)
+5. [Configuration](#configuration)
+6. [Running the Agent](#running-the-agent)
+7. [Running the Analyzer](#running-the-analyzer)
 8. [CLI Reference](#cli-reference)
 9. [Project Structure](#project-structure)
 
@@ -21,7 +21,7 @@ AIRIS is an AI agent that analyzes Kubernetes workload resource allocations — 
 ## Quick Start
 
 ```bash
-# Clone (SSH)
+# Clone
 git clone git@github.com:vyazovsky1/airis.git
 cd airis
 
@@ -32,35 +32,8 @@ pip install -r requirements.txt
 cp .env.example .env
 # Edit .env and add your API keys (see Configuration section)
 
-# Run a demo analysis
-python src/main.py --demo --provider gemini
-```
-
----
-
-## Clone the Repository
-
-### SSH (recommended)
-
-```bash
-git clone git@github.com:vyazovsky1/airis.git
-cd airis
-```
-
-### HTTPS (if SSH keys are not configured)
-
-```bash
-git clone https://github.com/vyazovsky1/airis.git
-cd airis
-```
-
-### Push an existing local repo
-
-```bash
-cd existing_repo
-git remote add origin git@github.com:vyazovsky1/airis.git
-git branch -M main
-git push -uf origin main
+# Dry-run PR review (prints recommendation, no GitHub post)
+python src/agent/main.py --action dry-run --pr 42 --namespace default
 ```
 
 ---
@@ -90,21 +63,27 @@ pip install -r requirements.txt
 | `google-genai` | Google Gemini provider |
 | `pydantic >= 2.0` | Structured data validation |
 | `python-dotenv` | Environment variable loading |
-| `mcp >= 1.0.0` | MCP client (Kubernetes + GitHub tool servers) |
+| `mcp >= 1.0.0` | MCP client + server (Kubernetes, GitHub, Analyzer tools) |
 
 ---
 
 ## MCP Tool Setup
 
-AIRIS connects to real Kubernetes and GitHub MCP servers for live data collection. Tools are discovered automatically at startup — nothing is hardcoded.
+AIRIS connects to three MCP servers at startup. Tools are discovered automatically — nothing is hardcoded.
+
+| Server | Transport | Purpose |
+|---|---|---|
+| `analyzer` | Python subprocess (stdio) | ARILC static analysis pipeline — scan repos, infer Resource DNA |
+| `kubernetes` | `npx` (stdio) | Live cluster metrics, PVC inspection, pod exec |
+| `github` | Docker (stdio) | PR diffs, file contents, review comments |
 
 ### Requirements
 
-- **Node.js 18+** — for the Kubernetes MCP server (runs via `npx`)
-- **Docker** — for the GitHub MCP server (recommended), OR a pre-built `github-mcp-server` binary from [releases](https://github.com/github/github-mcp-server/releases)
+- **Node.js 18+** — for the Kubernetes MCP server (`npx`)
+- **Docker** — for the GitHub MCP server (or a pre-built binary)
 - **GitHub Personal Access Token** — classic token with `repo` scope
 
-### Install MCP Servers
+### Install External MCP Servers
 
 **Linux / macOS / WSL:**
 
@@ -118,7 +97,7 @@ chmod +x tools/install_mcp.sh && ./tools/install_mcp.sh
 .\tools\install_mcp.ps1
 ```
 
-The scripts install `kubernetes-mcp-server` via `npm install -g` and pull the `ghcr.io/github/github-mcp-server` Docker image.
+The scripts install `kubernetes-mcp-server` via `npm install -g` and pull the `ghcr.io/github/github-mcp-server` Docker image. The Analyzer MCP server is built-in and requires no installation.
 
 ### GitHub Binary Alternative
 
@@ -145,7 +124,7 @@ Kubernetes MCP uses your local kubeconfig (`~/.kube/config`) automatically.
 ### Verify
 
 ```bash
-python src/main.py --action dry-run
+python src/agent/main.py --action dry-run
 ```
 
 The startup banner lists all discovered tools. If the tools list is empty, check that the MCP servers are installed and your `.env` is configured correctly.
@@ -154,12 +133,11 @@ The startup banner lists all discovered tools. If the tools list is empty, check
 
 ## Configuration
 
-`.env.example` is a committed template with placeholder values and full comments — it contains **no real secrets**.  
+`.env.example` is a committed template with placeholder values — it contains **no real secrets**.  
 Copy it to `.env` (gitignored) and fill in your actual keys:
 
 ```bash
 cp .env.example .env
-# then edit .env with your real API keys
 ```
 
 **`.env.example` variable reference:**
@@ -184,58 +162,104 @@ GEMINI_FAST_MODEL=gemini-3.1-flash-lite-preview  # Fast model for discovery task
 STORAGE_GATE_LIMIT_GI=50              # PVC size (GiB) that triggers the storage gate
 ```
 
-> **Note:** `.env` is listed in `.gitignore` — only `.env.example` (the template) is committed. Never put real API keys in `.env.example`.
+> **Note:** `.env` is listed in `.gitignore` — only `.env.example` is committed. Never put real API keys in `.env.example`.
 
 ---
 
 ## Running the Agent
 
-The agent entrypoint is `src/main.py`. Always run from the **project root**:
+The agent entrypoint is `src/agent/main.py`. Always run from the **project root**:
 
 ```bash
-python src/main.py [OPTIONS]
+python src/agent/main.py [OPTIONS]
 ```
 
 ### Common examples
 
-**Demo run — analyze the `payments-db` workload on PR #101 using Gemini:**
+**Analyze current K8s resource utilization in a namespace:**
 ```bash
-python src/main.py --demo --workload payments-db --pr 101 --provider gemini
+python src/agent/main.py --action analyze --namespace payments
 ```
 
-**Analyze a specific PR using GPT-4o:**
+**Review a PR for resource impact, print result only:**
 ```bash
-python src/main.py --pr 42 --workload payments-api --provider openai
+python src/agent/main.py --action dry-run --pr 42 --namespace payments --provider gemini
+```
+
+**Review a PR and post the result as a GitHub comment:**
+```bash
+python src/agent/main.py --action review --pr 42 --namespace payments --provider openai
 ```
 
 **Use a specific model, overriding the provider default:**
 ```bash
-python src/main.py --pr 42 --workload payments-api --provider openai --model gpt-4o-mini
+python src/agent/main.py --action dry-run --pr 42 --provider openai --model gpt-4o-mini
 ```
 
-**Dry-run — analyze without posting a PR review comment:**
+---
+
+## Running the Analyzer
+
+The ARILC Analyzer can be run standalone to produce a full static-analysis report for any repository. Always run from the **project root**:
+
 ```bash
-python src/main.py --pr 42 --workload payments-api --provider gemini --action dry-run
+python src/analyzer/analyzer_main.py --repo <path> --workload <name> [OPTIONS]
 ```
 
-**Provide an explicit path to the workload source code:**
+### Examples
+
+**Analyze a local repository with OpenAI:**
 ```bash
-python src/main.py --pr 42 --workload payments-api --provider gemini --root ./apps/payments
+python src/analyzer/analyzer_main.py --repo ./apps/payments-api --workload payments-api
 ```
+
+**Analyze with Gemini and a custom output directory:**
+```bash
+python src/analyzer/analyzer_main.py \
+  --repo ./apps/payments-api \
+  --workload payments-api \
+  --out .data/reports/payments \
+  --provider gemini
+```
+
+### Analyzer CLI Reference
+
+| Argument | Default | Description |
+|---|---|---|
+| `--repo` | *(required)* | Path to the repository to analyze |
+| `--workload` | *(required)* | Semantic name for the workload |
+| `--out` | `.data/analysis/<workload>` | Output directory for artifacts |
+| `--provider` | `openai` | LLM provider: `openai` or `gemini` |
+
+### Analyzer Output Artifacts
+
+All artifacts are written to `--out`:
+
+| File | Description |
+|---|---|
+| `resource_dna_<workload>.json` | Machine-readable Resource DNA: CPU/memory/storage recommendations |
+| `intelligence_report_<workload>.md` | Human-readable full-spectrum analysis report |
+| `complexity_heatmap_<workload>.csv` | Per-file cyclomatic complexity scores |
+| `doc_summary_<workload>.md` | LLM summary of documentation & developer intent |
+| `infra_summary_<workload>.md` | LLM summary of infrastructure manifests |
+| `dependencies_summary_<workload>.md` | LLM summary of dependency manifests |
+| `module_dossiers/` | Per-file deep-dive logic analysis documents |
+| `token_usage.json` | Token consumption breakdown by model tier |
 
 ---
 
 ## CLI Reference
 
+### Agent (`src/agent/main.py`)
+
 | Argument | Type | Default | Description |
 |---|---|---|---|
-| `--demo` | flag | `false` | Run in demo mode with the pre-configured dummy PR scenario |
-| `--workload` | string | `payments-db` | Name of the Kubernetes workload to analyze |
-| `--pr` | int | `101` | Pull Request number to review |
-| `--provider` | `openai` \| `gemini` | `gemini` | AI provider to use for reasoning |
-| `--model` | string | *(provider default)* | Override the model name (e.g. `gpt-4o-mini`, `gemini-2.5-flash`) |
-| `--action` | `pr` \| `dry-run` | `pr` | `pr` posts a review comment; `dry-run` prints the recommendation only |
-| `--root` | string | `None` | Explicit path to the workload's source code / config directory |
+| `--action` | `analyze` \| `review` \| `dry-run` | `dry-run` | `analyze` — K8s metrics review; `review` — PR review + post to GitHub; `dry-run` — PR review, print only |
+| `--namespace` | string | `default` | Kubernetes namespace to inspect |
+| `--pr` | int | — | Pull Request number (required for `review`/`dry-run`) |
+| `--provider` | `openai` \| `gemini` | `openai` | AI provider |
+| `--model` | string | *(provider default)* | Override the model name |
+| `--log-level` | `DEBUG`…`ERROR` | `INFO` | Logging verbosity |
 
 ---
 
@@ -244,18 +268,31 @@ python src/main.py --pr 42 --workload payments-api --provider gemini --root ./ap
 ```
 airis/
 ├── src/
-│   ├── main.py              # CLI entrypoint (mirrors examples/agent/agent.py)
-│   ├── agent/               # AirisAgent — agentic loop over MCP tools
-│   ├── tools/               # mcp_manager.py + tool utilities
-│   ├── analyzer/            # ARILC static analysis pipeline
-│   └── core/                # Config, logger, LLM provider abstraction
-├── prompts/                 # Versioned LLM prompt templates
-├── mcp_servers.json         # MCP server config (Kubernetes + GitHub)
-├── tools/                   # install_mcp.sh / install_mcp.ps1
-├── examples/                # Reference agent implementation + mock data
-├── .data/                   # Local state: caches, token logs, CSV findings
+│   ├── agent/                   # AIRIS agent — agentic loop, CLI entrypoint
+│   │   ├── main.py              # CLI entrypoint
+│   │   ├── airis_agent.py       # AirisAgent: tool-call loop + decision parsing
+│   │   ├── mcp_manager.py       # MCP server connection manager
+│   │   └── github_utils.py      # GitHub API helpers (PR diff, post review)
+│   ├── analyzer/                # ARILC static analysis pipeline
+│   │   ├── analyzer_main.py     # Standalone CLI for the analyzer
+│   │   ├── perception.py        # Phase 1: repo scan (languages, stack, entry points)
+│   │   ├── logic_analysis.py    # Phase 2: complexity + tiered LLM analysis
+│   │   ├── resource_profiler.py # Phase 3: Resource DNA inference
+│   │   ├── generator/           # Phase 4: artifact generation
+│   │   └── mcp_server/          # Analyzer exposed as MCP tools
+│   │       └── analyzer_server.py
+│   ├── core/                    # Shared: config, logger, LLM provider, token stats
+│   │   └── token_stats.py       # Global token usage counters
+│   └── scripts/                 # Dev utilities (not part of the runtime)
+│       ├── llm_utils.py         # Model listing helpers
+│       └── list_models.py       # Print available models for configured providers
+├── prompts/                     # Versioned LLM prompt templates
+├── mcp_servers.json             # MCP server config (Analyzer + Kubernetes + GitHub)
+├── tools/                       # install_mcp.sh / install_mcp.ps1
+├── examples/                    # Mock data for local development
+├── .data/                       # Local state: analysis artifacts, CSV findings
 ├── requirements.txt
-├── .env                     # Local configuration (do not commit)
-├── solution_design.md       # Full solution design document
-└── ToDo.md                  # Deferred implementation items
+├── .env                         # Local configuration (do not commit)
+├── solution_design.md           # Full solution design document
+└── ToDo.md                      # Deferred implementation items
 ```
