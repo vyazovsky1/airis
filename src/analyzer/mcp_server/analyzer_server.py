@@ -25,10 +25,10 @@ mcp = FastMCP("ARILC Analyzer")
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _resolve_output_dir(application_name: str, output_dir: Optional[str]) -> str:
+def _resolve_output_dir(application: str, output_dir: Optional[str]) -> str:
     if output_dir:
         return output_dir
-    path = os.path.join(_DEFAULT_OUTPUT_BASE, application_name)
+    path = os.path.join(_DEFAULT_OUTPUT_BASE, application)
     os.makedirs(path, exist_ok=True)
     return path
 
@@ -37,38 +37,38 @@ def _safe_json(obj) -> str:
     return json.dumps(obj, indent=2, default=str)
 
 
-def _no_analysis_error(application_name: str, artifacts_dir: str) -> str:
+def _no_analysis_error(application: str, artifacts_dir: str) -> str:
     return _safe_json({
-        "error": f"No analysis artifacts found for application '{application_name}'.",
+        "error": f"No analysis artifacts found for application '{application}'.",
         "resolution": (
             "Run the ARILC analysis pipeline first:\n"
             f"  python src/analyzer/analyzer_main.py "
-            f"--repo <repo_path> --application {application_name} --out {artifacts_dir}"
+            f"--repo <repo_path> --application {application} --out {artifacts_dir}"
         ),
     })
 
 
-def _artifact_catalog(application_name: str) -> dict:
+def _artifact_catalog() -> dict:
     """Maps artifact name → (filename_or_dirname, description)."""
     return {
         "resource_dna": (
-            f"resource_dna_{application_name}.json",
+            "resource_dna.json",
             "Machine-readable resource profile: CPU/memory recommendations, application archetype, risk advisories",
         ),
         "intelligence_report": (
-            f"intelligence_report_{application_name}.md",
+            "intelligence_report.md",
             "Human-readable report: archetype, resource table, signal matrix, risk advisories",
         ),
         "doc_summary": (
-            f"doc_summary_{application_name}.md",
+            "doc_summary.md",
             "LLM summary of documentation files (README, ARCHITECTURE, DESIGN, etc.)",
         ),
         "infra_summary": (
-            f"infra_summary_{application_name}.md",
+            "infra_summary.md",
             "LLM summary of infrastructure and deployment files (Dockerfile, k8s manifests, etc.)",
         ),
         "dependencies_summary": (
-            f"dependencies_summary_{application_name}.md",
+            "dependencies_summary.md",
             "LLM summary of dependency manifests (package.json, pom.xml, requirements.txt, etc.)",
         ),
         "module_summary": (
@@ -79,21 +79,48 @@ def _artifact_catalog(application_name: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Tool 1: List available artifacts
+# Tool 1: List analyzed applications
 # ---------------------------------------------------------------------------
 
 @mcp.tool()
-def list_artifacts(application_name: str, output_dir: str = "") -> str:
+def list_applications(output_dir: str = "") -> str:
     """
-    List all analysis artifacts for a application with their filenames and descriptions.
+    List all applications that have been analyzed.
+
+    Args:
+        output_dir: Directory where artifacts were written. Defaults to .data/analysis/.
+    """
+    base = output_dir or _DEFAULT_OUTPUT_BASE
+    if not os.path.exists(base):
+        return _safe_json({"applications": []})
+        
+    apps = []
+    for item in os.listdir(base):
+        if os.path.isdir(os.path.join(base, item)):
+            apps.append(item)
+            
+    return _safe_json({
+        "artifacts_dir": base,
+        "applications": sorted(apps),
+    })
+
+
+# ---------------------------------------------------------------------------
+# Tool 2: List available artifacts
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+def list_artifacts(application: str, output_dir: str = "") -> str:
+    """
+    List all analysis artifacts for an application with their filenames and descriptions.
     Shows which artifacts already exist on disk. Call this before get_artifacts.
 
     Args:
-        application_name: Semantic name for the application.
-        output_dir: Directory where artifacts were written. Defaults to .data/analysis/<application_name>.
+        application: Semantic name for the application.
+        output_dir: Directory where artifacts were written. Defaults to .data/analysis/<application>.
     """
-    base = _resolve_output_dir(application_name, output_dir or None)
-    catalog = _artifact_catalog(application_name)
+    base = _resolve_output_dir(application, output_dir or None)
+    catalog = _artifact_catalog()
 
     artifacts = []
     for name, (filename, description) in catalog.items():
@@ -111,22 +138,22 @@ def list_artifacts(application_name: str, output_dir: str = "") -> str:
         artifacts.append(entry)
 
     if not any(a["exists"] for a in artifacts):
-        return _no_analysis_error(application_name, base)
+        return _no_analysis_error(application, base)
 
     return _safe_json({
-        "application": application_name,
+        "application": application,
         "artifacts_dir": base,
         "artifacts": artifacts,
     })
 
 
 # ---------------------------------------------------------------------------
-# Tool 2: Get artifact contents
+# Tool 3: Get artifact contents
 # ---------------------------------------------------------------------------
 
 @mcp.tool()
 def get_artifacts(
-    application_name: str,
+    application: str,
     artifact_names: list[str],
     output_dir: str = "",
 ) -> str:
@@ -135,17 +162,17 @@ def get_artifacts(
     to see what is available and which names to pass.
 
     Args:
-        application_name: Semantic name for the application.
+        application: Semantic name for the application.
         artifact_names: List of artifact names to retrieve, e.g. ["resource_dna", "doc_summary"].
-        output_dir: Directory where artifacts were written. Defaults to .data/analysis/<application_name>.
+        output_dir: Directory where artifacts were written. Defaults to .data/analysis/<application>.
     """
-    base = _resolve_output_dir(application_name, output_dir or None)
-    catalog = _artifact_catalog(application_name)
+    base = _resolve_output_dir(application, output_dir or None)
+    catalog = _artifact_catalog()
 
     # Check if any analysis exists at all before processing individual names
-    catalog_all = _artifact_catalog(application_name)
+    catalog_all = _artifact_catalog()
     if not any(os.path.exists(os.path.join(base, f)) for f, _ in catalog_all.values()):
-        return _no_analysis_error(application_name, base)
+        return _no_analysis_error(application, base)
 
     results = {}
     errors = {}
@@ -179,7 +206,7 @@ def get_artifacts(
         except Exception as e:
             errors[name] = str(e)
 
-    response: dict = {"application": application_name, "artifacts": results}
+    response: dict = {"application": application, "artifacts": results}
     if errors:
         response["errors"] = errors
     return _safe_json(response)

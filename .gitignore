@@ -23,6 +23,8 @@ env/
 .idea/
 .vscode/
 *.code-workspace
+.claude/
+.gemini/
 
 # OS
 .DS_Store

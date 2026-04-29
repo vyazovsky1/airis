@@ -35,7 +35,7 @@ class ArtifactManager:
 
     def _generate_intelligence_report(self):
         """Creates the main human-readable MD report with Full-Spectrum context."""
-        report_path = os.path.join(self.output_dir, f"intelligence_report_{self.application_name}.md")
+        report_path = os.path.join(self.output_dir, "intelligence_report.md")
         
         cpu_rec = self.dna.get('resource_recommendations', {}).get('cpu', {})
         mem_rec = self.dna.get('resource_recommendations', {}).get('memory', {})
@@ -94,7 +94,7 @@ The analysis synthesized intelligence from the following repository pillars:
 
     def _save_resource_dna(self):
         """Saves the machine-readable JSON DNA."""
-        dna_path = os.path.join(self.output_dir, f"resource_dna_{self.application_name}.json")
+        dna_path = os.path.join(self.output_dir, "resource_dna.json")
         with open(dna_path, "w", encoding="utf-8") as f:
             json.dump(self.dna, f, indent=2)
         logger.info(f"Resource DNA Profile saved: {dna_path}")
@@ -117,15 +117,15 @@ The analysis synthesized intelligence from the following repository pillars:
     def _generate_summaries(self):
         """Dump of Documentation, Infrastructure, Dependency summaries."""
 
-        doc_summary_path = os.path.join(self.output_dir, f"doc_summary_{self.application_name}.md")
+        doc_summary_path = os.path.join(self.output_dir, "doc_summary.md")
         with open(doc_summary_path, "w", encoding="utf-8") as f:
             f.write(self.logic.get("doc_summary", "No documentation summary available."))
 
-        infra_summary_path = os.path.join(self.output_dir, f"infra_summary_{self.application_name}.md")
+        infra_summary_path = os.path.join(self.output_dir, "infra_summary.md")
         with open(infra_summary_path, "w", encoding="utf-8") as f:
             f.write(self.logic.get("infra_summary", "No infrastructure summary available."))
 
-        dependencies_summary_path = os.path.join(self.output_dir, f"dependencies_summary_{self.application_name}.md")
+        dependencies_summary_path = os.path.join(self.output_dir, "dependencies_summary.md")
         with open(dependencies_summary_path, "w", encoding="utf-8") as f:
             f.write(self.logic.get("dependencies_summary", "No dependencies summary available."))
 
@@ -133,7 +133,7 @@ The analysis synthesized intelligence from the following repository pillars:
 
     def _generate_logic_graph(self):
         """Generates a basic Mermaid graph of logic flow."""
-        graph_path = os.path.join(self.output_dir, f"logic_flow_{self.application_name}.mermaid")
+        graph_path = os.path.join(self.output_dir, "logic_flow.mermaid")
         
         # Simple placeholder logic for now
         content = "graph TD\n"

@@ -26,8 +26,9 @@ from agent.mcp_manager import MCPManager
 # ---------------------------------------------------------------------------
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
-APPLICATION_NAME = "nodejs-demoapp"
-TEST_OUTPUT_DIR = os.path.join(PROJECT_ROOT, ".data", "analysis", APPLICATION_NAME)
+APPLICATION_NAME = "guestbook-backend"
+ANALYSIS_BASE_DIR = os.path.join(PROJECT_ROOT, ".data", "analysis")
+TEST_OUTPUT_DIR = os.path.join(ANALYSIS_BASE_DIR, APPLICATION_NAME)
 MCP_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "analyzer_mcp_test.json")
 
 os.environ.setdefault("LOG_LEVEL", "WARNING")
@@ -88,22 +89,57 @@ async def show_registered_tools(mcp_manager: MCPManager) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Test 0: list_applications — list analyzed applications
+# ---------------------------------------------------------------------------
+
+async def test_list_applications(mcp_manager: MCPManager) -> bool:
+    """
+    Tool  : list_applications
+    Params: output_dir
+    """
+    _header("TEST 0: list_applications — List Analyzed Applications")
+    print(f"  output_dir    = {ANALYSIS_BASE_DIR}")
+
+    try:
+        raw = await mcp_manager.call_tool(
+            "analyzer__list_applications",
+            {"output_dir": ANALYSIS_BASE_DIR},
+        )
+        resp = _parse(raw)
+
+        if not _ok(resp):
+            print(f"  ✗ Unexpected error: {resp.get('error', '')}")
+            return False
+
+        print(f"  ✓ Applications list returned")
+        print(f"    artifacts_dir : {resp.get('artifacts_dir', '')}")
+        apps = resp.get("applications", [])
+        print(f"    Found {len(apps)} application(s): {apps}")
+        return True
+
+    except Exception as e:
+        print(f"  ✗ Exception: {e}")
+        import traceback; traceback.print_exc()
+        return False
+
+
+# ---------------------------------------------------------------------------
 # Test 1: list_artifacts — catalog with exists flags
 # ---------------------------------------------------------------------------
 
 async def test_list_artifacts(mcp_manager: MCPManager) -> bool:
     """
     Tool  : list_artifacts
-    Params: application_name, output_dir
+    Params: application, output_dir
     """
     _header("TEST 1: list_artifacts — Catalog of Analysis Artifacts")
-    print(f"  application_name = {APPLICATION_NAME}")
+    print(f"  application = {APPLICATION_NAME}")
     print(f"  output_dir    = {TEST_OUTPUT_DIR}")
 
     try:
         raw = await mcp_manager.call_tool(
             "analyzer__list_artifacts",
-            {"application_name": APPLICATION_NAME, "output_dir": TEST_OUTPUT_DIR},
+            {"application": APPLICATION_NAME, "output_dir": TEST_OUTPUT_DIR},
         )
         resp = _parse(raw)
 
@@ -139,7 +175,7 @@ async def test_list_artifacts(mcp_manager: MCPManager) -> bool:
 async def test_get_artifacts_invalid_name(mcp_manager: MCPManager) -> bool:
     """
     Tool  : get_artifacts
-    Params: application_name, artifact_names=[<invalid>], output_dir
+    Params: application, artifact_names=[<invalid>], output_dir
 
     Verifies that an unknown artifact name produces a clear error.
     """
@@ -150,7 +186,7 @@ async def test_get_artifacts_invalid_name(mcp_manager: MCPManager) -> bool:
         raw = await mcp_manager.call_tool(
             "analyzer__get_artifacts",
             {
-                "application_name": APPLICATION_NAME,
+                "application": APPLICATION_NAME,
                 "artifact_names": ["does_not_exist"],
                 "output_dir": TEST_OUTPUT_DIR,
             },
@@ -183,14 +219,14 @@ async def test_get_artifacts_invalid_name(mcp_manager: MCPManager) -> bool:
 async def test_get_artifacts_all(mcp_manager: MCPManager) -> bool:
     """
     Tool  : get_artifacts
-    Params: application_name, artifact_names=ALL_ARTIFACT_NAMES, output_dir
+    Params: application, artifact_names=ALL_ARTIFACT_NAMES, output_dir
 
     Requests all known artifacts. If analysis has been run, each is returned;
     if not, the top-level "no analysis" error is returned and we verify it
     contains the resolution hint.
     """
     _header("TEST 3: get_artifacts — Fetch All Artifacts")
-    print(f"  application_name  = {APPLICATION_NAME}")
+    print(f"  application  = {APPLICATION_NAME}")
     print(f"  artifact_names = {ALL_ARTIFACT_NAMES}")
     print(f"  output_dir     = {TEST_OUTPUT_DIR}")
 
@@ -198,7 +234,7 @@ async def test_get_artifacts_all(mcp_manager: MCPManager) -> bool:
         raw = await mcp_manager.call_tool(
             "analyzer__get_artifacts",
             {
-                "application_name": APPLICATION_NAME,
+                "application": APPLICATION_NAME,
                 "artifact_names": ALL_ARTIFACT_NAMES,
                 "output_dir": TEST_OUTPUT_DIR,
             },
@@ -262,6 +298,7 @@ async def main() -> int:
 
             await show_registered_tools(mcp_manager)
 
+            results["list_applications"] = await test_list_applications(mcp_manager)
             results["list_artifacts"] = await test_list_artifacts(mcp_manager)
             results["get_artifacts_invalid_name"] = await test_get_artifacts_invalid_name(mcp_manager)
             results["get_artifacts_all"] = await test_get_artifacts_all(mcp_manager)
