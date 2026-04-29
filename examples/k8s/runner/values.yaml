@@ -1,9 +1,10 @@
 replicaCount: 1
 
 image:
-  repository: myoung34/github-runner
-  tag: "latest"
-  pullPolicy: Always
+  repository: airis-runner
+  tag: "local"
+  # Never — use the locally built image, don't try to pull from Docker Hub
+  pullPolicy: Never
 
 # GitHub connection — set these via --set or a local override file,
 # do NOT commit real values here.
