@@ -1,0 +1,6 @@
+apiVersion: v2
+name: guestbook-log-collector
+description: DaemonSet example — Fluent Bit log collector running on every cluster node
+type: application
+version: 0.1.0
+appVersion: "3.2"

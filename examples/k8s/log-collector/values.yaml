@@ -1,0 +1,29 @@
+fullnameOverride: "log-collector"
+
+image:
+  repository: fluent/fluent-bit
+  tag: "3.2"
+  pullPolicy: IfNotPresent
+
+resources:
+  requests:
+    cpu: 20m
+    memory: 32Mi
+  limits:
+    cpu: 100m
+    memory: 128Mi
+
+# Run on every node including control-plane
+tolerations:
+  - key: node-role.kubernetes.io/control-plane
+    operator: Exists
+    effect: NoSchedule
+
+# Extra node selector constraints (empty = all nodes)
+nodeSelector: {}
+
+# Where Fluent Bit stores its tail position database on the node
+positionDB: /var/flbdb/flb-guestbook.db
+
+rbac:
+  create: true
