@@ -22,14 +22,18 @@ logger = get_logger(__name__)
 # Pydantic output models
 # ---------------------------------------------------------------------------
 
-class CpuMemoryLimits(BaseModel):
-    requests: str
-    limits: str
+class ResourceRequests(BaseModel):
+    cpu: str
+    memory: str
+    storage: Optional[str] = None
+
+class ResourceLimits(BaseModel):
+    cpu: str
+    memory: str
 
 class TargetResources(BaseModel):
-    cpu: CpuMemoryLimits
-    memory: CpuMemoryLimits
-    storage: str
+    requests: ResourceRequests
+    limits: ResourceLimits
 
 class DeploymentDecision(BaseModel):
     deployment_name: str
@@ -145,14 +149,18 @@ class AirisAgent:
         """
         token_stats.reset()
         tools = self._mcp.tools
-        max_turns = agent_config.MAX_SELF_CORRECTION_RETRIES * 3
+        max_turns = agent_config.MAX_AGENT_TURNS
+        max_retries = agent_config.MAX_SELF_CORRECTION_RETRIES
+        
         result: Optional[AirisDecision] = None
+        retries = 0
+        last_invalid_content: Optional[str] = None
 
         try:
             for turn in range(1, max_turns + 1):
                 logger.info(
-                    "Agentic loop turn %d/%d — %s",
-                    turn, max_turns, _describe_turn_context(history),
+                    "Agentic loop turn %d/%d (Retries: %d/%d) — %s",
+                    turn, max_turns, retries, max_retries, _describe_turn_context(history),
                 )
 
                 kwargs: dict = {}
@@ -162,13 +170,8 @@ class AirisAgent:
 
                 # DEBUG: full request sent to LLM
                 logger.debug(
-                    "LLM request → model=%s  messages=%d  tools=%d\n%s",
-                    self._model, len(history), len(tools),
-                    json.dumps(
-                        [m if isinstance(m, dict) else m.model_dump()
-                         for m in history],
-                        indent=2, default=str,
-                    ),
+                    "LLM request → model=%s  messages=%d  tools=%d",
+                    self._model, len(history), len(tools)
                 )
 
                 response = self._client.chat.completions.create(
@@ -189,8 +192,6 @@ class AirisAgent:
 
                 history.append(message)  # type: ignore[arg-type]
 
-                logger.debug("LLM response:\n%s", message.model_dump_json(indent=2))
-
                 # ── Tool calls ──────────────────────────────────────────────
                 if message.tool_calls:
                     if message.content:
@@ -210,10 +211,6 @@ class AirisAgent:
 
                         logger.info("  >> %s(%s)", fn_name, fn_args)
                         tool_result = await self._mcp.call_tool(fn_name, fn_args)
-
-                        # DEBUG: full tool result (untruncated — K8s responses can be large)
-                        logger.debug("  << %s result:\n%s", fn_name, tool_result)
-
                         history.append({
                             "role": "tool",
                             "tool_call_id": tc.id,
@@ -223,23 +220,55 @@ class AirisAgent:
 
                 # ── No tool calls — attempt to parse final JSON answer ────────
                 content = message.content or ""
+                
+                # Loop protection: detect if model is repeating invalid output
+                if content == last_invalid_content:
+                    logger.warning("LLM is repeating the same invalid content. Escalating prompt.")
+                    feedback_prefix = "[SYSTEM]: CRITICAL: You are repeating the same invalid output. "
+                else:
+                    feedback_prefix = "[SYSTEM]: "
+
                 try:
-                    raw_json = content.replace("```json", "").replace("```", "").strip()
+                    # Fuzzy JSON extraction
+                    raw_json = content
+                    if "```json" in content:
+                        raw_json = content.split("```json")[1].split("```")[0]
+                    elif "```" in content:
+                        raw_json = content.split("```")[1].split("```")[0]
+                    
+                    raw_json = raw_json.strip()
+                    
+                    # If still not parsing, try to find the first '{' and last '}'
+                    if not (raw_json.startswith("{") and raw_json.endswith("}")):
+                        start = raw_json.find("{")
+                        end = raw_json.rfind("}")
+                        if start != -1 and end != -1:
+                            raw_json = raw_json[start : end + 1]
+
                     result = AirisDecision.model_validate_json(raw_json)
                     logger.info("AirisDecision validated successfully.")
                     return result
+
                 except (ValidationError, Exception) as e:
-                    logger.warning("JSON parse/validation failed on turn %d: %s", turn, e)
+                    retries += 1
+                    last_invalid_content = content
+                    
+                    if retries > max_retries:
+                        logger.error("AirisAgent: exceeded max formatting retries (%d).", max_retries)
+                        break
+
+                    logger.warning("JSON parse/validation failed (Retry %d/%d): %s", retries, max_retries, e)
+                    
                     history.append({
                         "role": "user",
                         "content": (
-                            f"[SYSTEM]: Your previous output failed JSON validation: {e}. "
-                            "Output ONLY raw JSON conforming to the required schema. "
-                            "No markdown fences."
+                            f"{feedback_prefix}Your previous output failed JSON validation: {e}. "
+                            "Please fix the schema and output ONLY the raw JSON object. "
+                            "Ensure 'deployments' is a list and all 'target_resources' are correctly nested."
                         ),
                     })
 
-            logger.error("AirisAgent: exceeded %d turns without a valid decision.", max_turns)
+            logger.error("AirisAgent: loop terminated without a valid decision.")
             return None
 
         finally:
