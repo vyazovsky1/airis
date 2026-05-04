@@ -21,15 +21,15 @@ Expected JSON Structure:
       "deployment_name": "example-deployment",
       "reasoning": "Detailed explanation of CPU, Memory, and Storage recommendations for this deployment. Storage recommendations MUST align with the deployment manifest PVC schema.",
       "target_resources": {
-        "cpu": {
-          "requests": "...",
-          "limits": "..."
+        "requests": {
+          "cpu": "...",
+          "memory": "...",
+          "storage": "..."
         },
-        "memory": {
-          "requests": "...",
-          "limits": "..."
-        },
-        "storage": "..."
+        "limits": {
+          "cpu": "...",
+          "memory": "..."
+        }
       }
     }
   ]
