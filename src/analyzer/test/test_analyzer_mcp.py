@@ -95,7 +95,7 @@ async def show_registered_tools(mcp_manager: MCPManager) -> None:
 async def test_list_applications(mcp_manager: MCPManager) -> bool:
     """
     Tool  : list_applications
-    Params: output_dir
+    Params: (none)
     """
     _header("TEST 0: list_applications — List Analyzed Applications")
     print(f"  output_dir    = {ANALYSIS_BASE_DIR}")
@@ -103,7 +103,7 @@ async def test_list_applications(mcp_manager: MCPManager) -> bool:
     try:
         raw = await mcp_manager.call_tool(
             "analyzer__list_applications",
-            {"output_dir": ANALYSIS_BASE_DIR},
+            {},
         )
         resp = _parse(raw)
 
@@ -130,7 +130,7 @@ async def test_list_applications(mcp_manager: MCPManager) -> bool:
 async def test_list_artifacts(mcp_manager: MCPManager) -> bool:
     """
     Tool  : list_artifacts
-    Params: application, output_dir
+    Params: application
     """
     _header("TEST 1: list_artifacts — Catalog of Analysis Artifacts")
     print(f"  application = {APPLICATION_NAME}")
@@ -139,7 +139,7 @@ async def test_list_artifacts(mcp_manager: MCPManager) -> bool:
     try:
         raw = await mcp_manager.call_tool(
             "analyzer__list_artifacts",
-            {"application": APPLICATION_NAME, "output_dir": TEST_OUTPUT_DIR},
+            {"application": APPLICATION_NAME},
         )
         resp = _parse(raw)
 
@@ -175,7 +175,7 @@ async def test_list_artifacts(mcp_manager: MCPManager) -> bool:
 async def test_get_artifacts_invalid_name(mcp_manager: MCPManager) -> bool:
     """
     Tool  : get_artifacts
-    Params: application, artifact_names=[<invalid>], output_dir
+    Params: application, artifact_names=[<invalid>]
 
     Verifies that an unknown artifact name produces a clear error.
     """
@@ -188,7 +188,6 @@ async def test_get_artifacts_invalid_name(mcp_manager: MCPManager) -> bool:
             {
                 "application": APPLICATION_NAME,
                 "artifact_names": ["does_not_exist"],
-                "output_dir": TEST_OUTPUT_DIR,
             },
         )
         resp = _parse(raw)
@@ -219,7 +218,7 @@ async def test_get_artifacts_invalid_name(mcp_manager: MCPManager) -> bool:
 async def test_get_artifacts_all(mcp_manager: MCPManager) -> bool:
     """
     Tool  : get_artifacts
-    Params: application, artifact_names=ALL_ARTIFACT_NAMES, output_dir
+    Params: application, artifact_names=ALL_ARTIFACT_NAMES
 
     Requests all known artifacts. If analysis has been run, each is returned;
     if not, the top-level "no analysis" error is returned and we verify it
@@ -236,7 +235,6 @@ async def test_get_artifacts_all(mcp_manager: MCPManager) -> bool:
             {
                 "application": APPLICATION_NAME,
                 "artifact_names": ALL_ARTIFACT_NAMES,
-                "output_dir": TEST_OUTPUT_DIR,
             },
         )
         resp = _parse(raw)

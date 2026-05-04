@@ -97,7 +97,7 @@ chmod +x tools/install_mcp.sh && ./tools/install_mcp.sh
 .\tools\install_mcp.ps1
 ```
 
-The scripts install `kubernetes-mcp-server` via `npm install -g` and pull the `ghcr.io/github/github-mcp-server` Docker image. The Analyzer MCP server is built-in and requires no installation.
+The scripts install `kubernetes-mcp-server` via `npm install -g` and pull the `ghcr.io/github/github-mcp-server` Docker image. The Analyzer MCP server is built-in and requires no installation. It supports an optional `--artifacts-dir` command-line parameter to set the base artifacts directory (defaults to `.data/analysis`).
 
 ### GitHub Binary Alternative
 
@@ -203,21 +203,21 @@ python src/agent/main.py --action dry-run --pr 42 --provider openai --model gpt-
 The ARILC Analyzer can be run standalone to produce a full static-analysis report for any repository. Always run from the **project root**:
 
 ```bash
-python src/analyzer/analyzer_main.py --repo <path> --workload <name> [OPTIONS]
+python src/analyzer/main.py --repo <path> --application <name> [OPTIONS]
 ```
 
 ### Examples
 
 **Analyze a local repository with OpenAI:**
 ```bash
-python src/analyzer/analyzer_main.py --repo ./apps/payments-api --workload payments-api
+python src/analyzer/main.py --repo ./apps/payments-api --application payments-api
 ```
 
 **Analyze with Gemini and a custom output directory:**
 ```bash
-python src/analyzer/analyzer_main.py \
+python src/analyzer/main.py \
   --repo ./apps/payments-api \
-  --workload payments-api \
+  --application payments-api \
   --out .data/reports/payments \
   --provider gemini
 ```
@@ -227,8 +227,8 @@ python src/analyzer/analyzer_main.py \
 | Argument | Default | Description |
 |---|---|---|
 | `--repo` | *(required)* | Path to the repository to analyze |
-| `--workload` | *(required)* | Semantic name for the workload |
-| `--out` | `.data/analysis/<workload>` | Output directory for artifacts |
+| `--application` | *(required)* | Semantic name for the application |
+| `--out` | `.data/analysis/<application>` | Output directory for artifacts |
 | `--provider` | `openai` | LLM provider: `openai` or `gemini` |
 
 ### Analyzer Output Artifacts
@@ -237,13 +237,12 @@ All artifacts are written to `--out`:
 
 | File | Description |
 |---|---|
-| `resource_dna_<workload>.json` | Machine-readable Resource DNA: CPU/memory/storage recommendations |
-| `intelligence_report_<workload>.md` | Human-readable full-spectrum analysis report |
-| `complexity_heatmap_<workload>.csv` | Per-file cyclomatic complexity scores |
-| `doc_summary_<workload>.md` | LLM summary of documentation & developer intent |
-| `infra_summary_<workload>.md` | LLM summary of infrastructure manifests |
-| `dependencies_summary_<workload>.md` | LLM summary of dependency manifests |
-| `module_dossiers/` | Per-file deep-dive logic analysis documents |
+| `resource_dna.json` | Machine-readable Resource DNA: CPU/memory/storage recommendations |
+| `intelligence_report.md` | Human-readable full-spectrum analysis report |
+| `doc_summary.md` | LLM summary of documentation & developer intent |
+| `infra_summary.md` | LLM summary of infrastructure manifests |
+| `dependencies_summary.md` | LLM summary of dependency manifests |
+| `module_summary/` | Per-file deep-dive logic analysis documents |
 | `token_usage.json` | Token consumption breakdown by model tier |
 
 ---
@@ -274,7 +273,7 @@ airis/
 │   │   ├── mcp_manager.py       # MCP server connection manager
 │   │   └── github_utils.py      # GitHub API helpers (PR diff, post review)
 │   ├── analyzer/                # ARILC static analysis pipeline
-│   │   ├── analyzer_main.py     # Standalone CLI for the analyzer
+│   │   ├── main.py              # Standalone CLI for the analyzer
 │   │   ├── perception.py        # Phase 1: repo scan (languages, stack, entry points)
 │   │   ├── logic_analysis.py    # Phase 2: complexity + tiered LLM analysis
 │   │   ├── resource_profiler.py # Phase 3: Resource DNA inference

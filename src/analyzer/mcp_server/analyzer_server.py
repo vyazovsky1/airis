@@ -25,9 +25,7 @@ mcp = FastMCP("ARILC Analyzer")
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _resolve_output_dir(application: str, output_dir: Optional[str]) -> str:
-    if output_dir:
-        return output_dir
+def _app_dir(application: str) -> str:
     path = os.path.join(_DEFAULT_OUTPUT_BASE, application)
     os.makedirs(path, exist_ok=True)
     return path
@@ -37,13 +35,13 @@ def _safe_json(obj) -> str:
     return json.dumps(obj, indent=2, default=str)
 
 
-def _no_analysis_error(application: str, artifacts_dir: str) -> str:
+def _no_analysis_error(application: str) -> str:
     return _safe_json({
         "error": f"No analysis artifacts found for application '{application}'.",
         "resolution": (
             "Run the ARILC analysis pipeline first:\n"
-            f"  python src/analyzer/analyzer_main.py "
-            f"--repo <repo_path> --application {application} --out {artifacts_dir}"
+            f"  python src/analyzer/main.py "
+            f"--repo <repo_path> --application {application}"
         ),
     })
 
@@ -83,24 +81,21 @@ def _artifact_catalog() -> dict:
 # ---------------------------------------------------------------------------
 
 @mcp.tool()
-def list_applications(output_dir: str = "") -> str:
+def list_applications() -> str:
     """
     List all applications that have been analyzed.
-
-    Args:
-        output_dir: Directory where artifacts were written. Defaults to .data/analysis/.
+    Returns the names of applications available for artifact retrieval.
     """
-    base = output_dir or _DEFAULT_OUTPUT_BASE
+    base = _DEFAULT_OUTPUT_BASE
     if not os.path.exists(base):
         return _safe_json({"applications": []})
-        
+
     apps = []
     for item in os.listdir(base):
         if os.path.isdir(os.path.join(base, item)):
             apps.append(item)
-            
+
     return _safe_json({
-        "artifacts_dir": base,
         "applications": sorted(apps),
     })
 
@@ -110,16 +105,15 @@ def list_applications(output_dir: str = "") -> str:
 # ---------------------------------------------------------------------------
 
 @mcp.tool()
-def list_artifacts(application: str, output_dir: str = "") -> str:
+def list_artifacts(application: str) -> str:
     """
     List all analysis artifacts for an application with their filenames and descriptions.
     Shows which artifacts already exist on disk. Call this before get_artifacts.
 
     Args:
-        application: Semantic name for the application.
-        output_dir: Directory where artifacts were written. Defaults to .data/analysis/<application>.
+        application: Semantic name for the application (as returned by list_applications).
     """
-    base = _resolve_output_dir(application, output_dir or None)
+    base = _app_dir(application)
     catalog = _artifact_catalog()
 
     artifacts = []
@@ -138,7 +132,7 @@ def list_artifacts(application: str, output_dir: str = "") -> str:
         artifacts.append(entry)
 
     if not any(a["exists"] for a in artifacts):
-        return _no_analysis_error(application, base)
+        return _no_analysis_error(application)
 
     return _safe_json({
         "application": application,
@@ -155,24 +149,22 @@ def list_artifacts(application: str, output_dir: str = "") -> str:
 def get_artifacts(
     application: str,
     artifact_names: list[str],
-    output_dir: str = "",
 ) -> str:
     """
     Return the contents of one or more analysis artifacts. Use list_artifacts first
     to see what is available and which names to pass.
 
     Args:
-        application: Semantic name for the application.
+        application: Semantic name for the application (as returned by list_applications).
         artifact_names: List of artifact names to retrieve, e.g. ["resource_dna", "doc_summary"].
-        output_dir: Directory where artifacts were written. Defaults to .data/analysis/<application>.
     """
-    base = _resolve_output_dir(application, output_dir or None)
+    base = _app_dir(application)
     catalog = _artifact_catalog()
 
     # Check if any analysis exists at all before processing individual names
     catalog_all = _artifact_catalog()
     if not any(os.path.exists(os.path.join(base, f)) for f, _ in catalog_all.values()):
-        return _no_analysis_error(application, base)
+        return _no_analysis_error(application)
 
     results = {}
     errors = {}
@@ -217,4 +209,12 @@ def get_artifacts(
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description="ARILC Analyzer MCP Server")
+    parser.add_argument("--artifacts-dir", type=str, help="Base directory for analysis artifacts")
+    args, unknown = parser.parse_known_args()
+
+    if args.artifacts_dir:
+        _DEFAULT_OUTPUT_BASE = os.path.abspath(args.artifacts_dir)
+
     mcp.run()

@@ -12,21 +12,10 @@
       "env": {}
     },
     "kubernetes": {
-      "command": "npx",
-      "args": ["-y", "kubernetes-mcp-server@latest", "--log-level", "0"],
+      "command": "wsl",
+      "args": ["npx", "-y", "kubernetes-mcp-server@latest", "--log-level", "0"],
       "env": {}
-    },
-    "github": {
-      "command": "docker",
-      "args": [
-        "run", "-i", "--rm",
-        "-e", "GITHUB_PERSONAL_ACCESS_TOKEN",
-        "ghcr.io/github/github-mcp-server"
-      ],
-      "env": {
-        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}",
-        "GITHUB_TOOLSETS": "pull_requests,repos"
-      }
     }
+
   }
 }
