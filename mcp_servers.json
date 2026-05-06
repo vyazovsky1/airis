@@ -12,8 +12,8 @@
       "env": {}
     },
     "kubernetes": {
-      "command": "wsl",
-      "args": ["npx", "-y", "kubernetes-mcp-server@latest", "--log-level", "0"],
+      "command": "npx",
+      "args": ["-y", "kubernetes-mcp-server@latest", "--log-level", "0"],
       "env": {}
     }
 
