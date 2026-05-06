@@ -1,5 +1,8 @@
 # Guestbook — Kubernetes Demo App
 
+> [!NOTE] 
+> This example is taken from https://github.com/GoogleCloudPlatform/kubernetes-engine-samples/blob/main/quickstarts/guestbook/
+
 A three-tier demo application: **Frontend** (Nginx + HTML/JS) → **Backend** (PHP API) → **Database** (Redis). Deployed on Kubernetes via Helm.
 
 ---
