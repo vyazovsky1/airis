@@ -162,7 +162,8 @@ GEMINI_FAST_MODEL=gemini-3.1-flash-lite-preview  # Fast model for discovery task
 STORAGE_GATE_LIMIT_GI=50              # PVC size (GiB) that triggers the storage gate
 ```
 
-> **Note:** `.env` is listed in `.gitignore` — only `.env.example` is committed. Never put real API keys in `.env.example`.
+> [!WARNING] 
+> `.env` is listed in `.gitignore` — only `.env.example` is committed. Never put real API keys in `.env.example`.
 
 ---
 
@@ -208,9 +209,14 @@ python src/analyzer/main.py --repo <path> --application <name> [OPTIONS]
 
 ### Examples
 
-**Analyze a local repository with OpenAI:**
+**Analyze a examples repository with OpenAI:**
 ```bash
-python src/analyzer/main.py --repo ./apps/payments-api --application payments-api
+python src/analyzer/main.py --repo ./examples/k8s/frontend --application guestbook-frontend
+
+python src/analyzer/main.py --repo ./examples/k8s/backend --application guestbook-backend
+
+python src/analyzer/main.py --repo ./examples/k8s/database --application guestbook-database
+
 ```
 
 **Analyze with Gemini and a custom output directory:**
