@@ -32,8 +32,8 @@ pip install -r requirements.txt
 cp .env.example .env
 # Edit .env and add your API keys (see Configuration section)
 
-# Dry-run PR review (prints recommendation, no GitHub post)
-python src/agent/main.py --action dry-run --pr 42 --namespace default
+# Dry-run PR review (prints recommendation)
+python src/agent/main.py --action dry-run --pr examples/mocks/pr101.diff --namespace default
 ```
 
 ---
@@ -184,17 +184,17 @@ python src/agent/main.py --action analyze --namespace payments
 
 **Review a PR for resource impact, print result only:**
 ```bash
-python src/agent/main.py --action dry-run --pr 42 --namespace payments --provider gemini
+python src/agent/main.py --action dry-run --pr examples/mocks/pr101.diff --namespace payments --provider gemini
 ```
 
 **Review a PR and post the result as a GitHub comment:**
 ```bash
-python src/agent/main.py --action review --pr 42 --namespace payments --provider openai
+python src/agent/main.py --action review --pr examples/mocks/pr101.diff --namespace payments --provider openai
 ```
 
 **Use a specific model, overriding the provider default:**
 ```bash
-python src/agent/main.py --action dry-run --pr 42 --provider openai --model gpt-4o-mini
+python src/agent/main.py --action dry-run --pr examples/mocks/pr101.diff --provider openai --model gpt-4o-mini
 ```
 
 ---
@@ -261,7 +261,7 @@ All artifacts are written to `--out`:
 |---|---|---|---|
 | `--action` | `analyze` \| `review` \| `dry-run` | `dry-run` | `analyze` — K8s metrics review; `review` — PR review + post to GitHub; `dry-run` — PR review, print only |
 | `--namespace` | string | `default` | Kubernetes namespace to inspect |
-| `--pr` | int | — | Pull Request number (required for `review`/`dry-run`) |
+| `--pr` | string | — | Path to a Pull Request diff file (required for `review`/`dry-run`) |
 | `--provider` | `openai` \| `gemini` | `openai` | AI provider |
 | `--model` | string | *(provider default)* | Override the model name |
 | `--log-level` | `DEBUG`…`ERROR` | `INFO` | Logging verbosity |

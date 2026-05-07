@@ -57,7 +57,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="AIRIS - AI Engine for Resource Intelligence & Sizing")
     parser.add_argument("--namespace", type=str, default="default",
                         help="Kubernetes namespace to analyze")
-    parser.add_argument("--pr",        type=int, help="Pull Request number to review")
+    parser.add_argument("--pr",        type=str, help="Path to a Pull Request diff file to review")
     parser.add_argument("--provider",  type=str, choices=["openai", "gemini"], default="openai",
                         help="AI provider to use")
     parser.add_argument("--model",     type=str, help="Model override (default: provider's thinking-tier model)")
@@ -82,7 +82,7 @@ async def main() -> None:
 
     _configure_log_levels()
 
-    logger.info("Running AIRIS in '%s' mode - namespace: %s, PR: #%s",
+    logger.info("Running AIRIS in '%s' mode - namespace: %s, PR: %s",
                 args.action, args.namespace, args.pr)
 
     servers_cfg = load_servers_config()
@@ -97,7 +97,19 @@ async def main() -> None:
             if args.action == "analyze":
                 result = await agent.run_k8s_analysis(namespace=args.namespace)
             else:  # review or dry-run
-                result = await agent.run_pr_review(pr_number=args.pr, namespace=args.namespace)
+                if not args.pr:
+                    logger.error("--pr <diff_file> is required for 'review' or 'dry-run' actions.")
+                    sys.exit(1)
+                
+                diff_path = Path(args.pr)
+                if not diff_path.exists():
+                    logger.error("PR diff file not found: %s", args.pr)
+                    sys.exit(1)
+                
+                with open(diff_path, "r", encoding="utf-8") as f:
+                    pr_diff = f.read()
+                
+                result = await agent.run_pr_review(pr_diff=pr_diff, namespace=args.namespace)
         except Exception as exc:
             error = exc
 
@@ -110,22 +122,29 @@ async def main() -> None:
         print("Agent failed to produce a decision.")
         sys.exit(1)
 
-    if args.action in ("dry-run", "analyze"):
-        print("\n--- AIRIS Decision ---")
-        print(result.model_dump_json(indent=2))
-    elif args.action == "review":
-        from agent import github_utils
+    if args.action in ("dry-run", "analyze", "review"):
         deployments_json = "\n".join(
             f"**{d.deployment_name}**:\n*Reasoning*: {d.reasoning}\n```json\n{d.target_resources.model_dump_json(indent=2)}\n```"
             for d in result.deployments
         )
         md_comment = (
-            f"### AIRIS Resource Review\n"
+            f"### AIRIS Decision\n"
             f"**Decision:** {result.decision}\n\n"
             f"**Overall Reasoning:**\n{result.reasoning}\n\n"
             f"**Deployments:**\n{deployments_json}"
         )
-        github_utils.create_pull_request_review(args.pr, md_comment)
+
+        if args.action in ("dry-run", "analyze"):
+            print("\n--- AIRIS Decision ---")
+            print(md_comment)
+            # Also print raw JSON for debugging/piping
+            logger.debug("Raw JSON: %s", result.model_dump_json(indent=2))
+        elif args.action == "review":
+            # Note: automated review posting currently requires a PR ID, which is no longer passed to --pr.
+            # Falling back to dry-run behavior (stdout) for now.
+            logger.info("Automated GitHub review posting is disabled when using a diff file.")
+            print("\n--- AIRIS Review Comment (not posted) ---")
+            print(md_comment)
 
 
 if __name__ == "__main__":

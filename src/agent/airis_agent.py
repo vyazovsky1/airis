@@ -128,14 +128,17 @@ class AirisAgent:
         history.append({"role": "user", "content": f"Analyze namespace '{namespace}'."})
         return await self._agent_loop(history)
 
-    async def run_pr_review(self, pr_number: int, namespace: str) -> Optional[AirisDecision]:
+    async def run_pr_review(self, pr_diff: str, namespace: str) -> Optional[AirisDecision]:
         """
         Case 2: Review a PR for resource allocation impact.
         System prompt: tools_pr.txt. K8s tools are optional.
         """
-        logger.info("Mode: PR review — PR #%d, namespace '%s'", pr_number, namespace)
+        logger.info("Mode: PR review — namespace '%s'", namespace)
         history = self._fresh_history("pr")
-        history.append({"role": "user", "content": f"Review PR #{pr_number} in namespace '{namespace}'."})
+        history.append({
+            "role": "user",
+            "content": f"Review this PR diff in namespace '{namespace}':\n\n{pr_diff}"
+        })
         return await self._agent_loop(history)
 
     # ── Shared tool-call loop ───────────────────────────────────────────────
