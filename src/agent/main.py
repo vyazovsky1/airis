@@ -123,28 +123,8 @@ async def main() -> None:
         sys.exit(1)
 
     if args.action in ("dry-run", "analyze", "review"):
-        deployments_json = "\n".join(
-            f"**{d.deployment_name}**:\n*Reasoning*: {d.reasoning}\n```json\n{d.target_resources.model_dump_json(indent=2)}\n```"
-            for d in result.deployments
-        )
-        md_comment = (
-            f"### AIRIS Decision\n"
-            f"**Decision:** {result.decision}\n\n"
-            f"**Overall Reasoning:**\n{result.reasoning}\n\n"
-            f"**Deployments:**\n{deployments_json}"
-        )
-
-        if args.action in ("dry-run", "analyze"):
-            print("\n--- AIRIS Decision ---")
-            print(md_comment)
-            # Also print raw JSON for debugging/piping
-            logger.debug("Raw JSON: %s", result.model_dump_json(indent=2))
-        elif args.action == "review":
-            # Note: automated review posting currently requires a PR ID, which is no longer passed to --pr.
-            # Falling back to dry-run behavior (stdout) for now.
-            logger.info("Automated GitHub review posting is disabled when using a diff file.")
-            print("\n--- AIRIS Review Comment (not posted) ---")
-            print(md_comment)
+        print("\n--- AIRIS Decision ---")
+        print(result.model_dump_json(indent=2))
 
 
 if __name__ == "__main__":

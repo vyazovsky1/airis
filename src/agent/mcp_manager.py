@@ -37,7 +37,8 @@ class MCPManager:
 
     async def _connect(self, name: str, cfg: dict) -> None:
         try:
-            logger.info("Connecting to MCP server '%s'", name)
+            cmd = " ".join([cfg["command"]] + cfg.get("args", []))
+            logger.info("Starting MCP server '%s': %s", name, cmd)
             env = {**os.environ, **cfg.get("env", {})}
             params = StdioServerParameters(
                 command=cfg["command"],
