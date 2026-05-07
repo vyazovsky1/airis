@@ -44,6 +44,7 @@ class PerceptionEngine:
             ".py": "Python",
             ".go": "Go",
             ".js": "JavaScript", ".mjs": "Module JavaScript (NodeJS)", ".ejs": "Embedded JavaScript (NodeJS)",
+            ".html": "HTML pages",
             ".ts": "TypeScript",
             ".php": "PHP",
             ".java": "Java",
