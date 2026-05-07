@@ -1,8 +1,8 @@
 Analyze the resource allocation (CPU/Memory limits and requests) against actual usage data.
 Evaluate adequacy using the following Utilization Band rules (based on Usage vs allocated Requests):
 - Under-provisioned: average usage > 90% of allocated requests. High risk of resource starvation.
-- Well-utilised: average usage between 50% and 90% of allocated requests.
-- Over-provisioned: average usage < 50% of allocated requests. Wasted capacity.
+- Well-utilised: average usage between 40% and 90% of allocated requests.
+- Over-provisioned: average usage < 40% of allocated requests. Wasted capacity.
 
 You must consider:
 1. Application Archetype: Does it need headroom for spikes or stable limits?
