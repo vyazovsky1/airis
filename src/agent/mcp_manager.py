@@ -37,21 +37,23 @@ class MCPManager:
 
     async def _connect(self, name: str, cfg: dict) -> None:
         try:
+            logger.info("Connecting to MCP server '%s'", name)
             env = {**os.environ, **cfg.get("env", {})}
             params = StdioServerParameters(
                 command=cfg["command"],
                 args=cfg.get("args", []),
                 env=env,
             )
+            devnull = open(os.devnull, "w")
+            self._exit_stack.callback(devnull.close)
             read, write = await self._exit_stack.enter_async_context(
-                stdio_client(params, errlog=sys.stderr)
+                stdio_client(params, errlog=devnull)
             )
             session = await self._exit_stack.enter_async_context(
                 ClientSession(read, write)
             )
             await session.initialize()
             self._sessions[name] = session
-            logger.info("Connected to MCP server '%s'", name)
             await self._register_tools(name, session)
         except Exception as exc:
             logger.warning("Could not connect to MCP server '%s': %s", name, exc)
