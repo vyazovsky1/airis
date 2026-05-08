@@ -7,7 +7,7 @@
   ],
   "mcpServers": {
     "analyzer": {
-      "command": "python",
+      "command": "python3",
       "args": ["src/analyzer/mcp_server/analyzer_server.py"],
       "env": {}
     },
