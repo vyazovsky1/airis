@@ -25,6 +25,9 @@ jobs:
       - name: Install dependencies
         run: pip3 install -r requirements.txt
 
+      - name: Export kubeconfig
+        run: echo "KUBECONFIG=$HOME/.kube/config" >> $GITHUB_ENV
+
       - name: Run AIRIS review
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
