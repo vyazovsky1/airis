@@ -14,8 +14,7 @@
     "kubernetes": {
       "command": "npx",
       "args": ["-y", "kubernetes-mcp-server@latest",
-               "--read-only", 
-               "--toolsets", "core,config",
+               "--read-only",
                "--log-level", "0"],
       "env": {}
     }
