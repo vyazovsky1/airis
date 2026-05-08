@@ -19,8 +19,8 @@ database:
 
 resources:
   requests:
-    cpu: 100m
-    memory: 100Mi
-  limits:
     cpu: 500m
-    memory: 512Mi
+    memory: 1000Mi
+  limits:
+    cpu: 1500m
+    memory: 1500Mi
