@@ -37,11 +37,11 @@ class TargetResources(BaseModel):
 
 class DeploymentDecision(BaseModel):
     deployment_name: str
+    decision: str
     reasoning: str
     target_resources: TargetResources
 
 class AirisDecision(BaseModel):
-    decision: str
     reasoning: str
     deployments: list[DeploymentDecision]
 

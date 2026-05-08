@@ -2,23 +2,25 @@ Output your final decision entirely as a strict, parseable JSON object.
 DO NOT wrap the output in markdown code blocks. Return ONLY the raw JSON string.
 
 Your JSON output must map to the following structure and rules:
-1. "decision": String (APPROVE | COMMENT | REQUEST_CHANGES).
-   - APPROVE: Resources are optimally sized and healthy.
-   - COMMENT: Resources are mostly adequate, but minor over-provisioning or optimization opportunities exist.
-   - REQUEST_CHANGES: Critical technical issues detected (Inadequate sizing, outage risk, or policy violations).
-2. "reasoning": String. Technical explanation of the resource adequacy findings.
-3. "target_resources": Nested JSON Object. Contains optimal requested constraints.
-   - LIMITS RULE: Change limits only when evidence shows the current limit will be exceeded. Evidence must be explicit and quantifiable (e.g., a confirmed allocation size, consistent limit saturation in metrics). When such evidence exists, set new limits to the evidenced value plus 20% headroom and state the evidence in per-deployment reasoning. Without evidence, preserve limits exactly as-is.
-   - REQUESTS RULE: Adjust requests to match evidenced demand. When evidence shows demand exceeds current requests, you MUST raise requests to cover it. When evidence shows demand is consistently below current requests, optimize requests downward. Without evidence, preserve current requests.
-   - If "APPROVE", duplicate the original requests and limits.
+1. "reasoning": String. Overall technical summary of the resource adequacy findings across all deployments.
+2. Per-deployment fields (inside each "deployments" entry):
+   a. "decision": String (APPROVE | COMMENT | REQUEST_CHANGES) — evaluated independently for each deployment.
+      - APPROVE: Resources are optimally sized and healthy.
+      - COMMENT: Resources are mostly adequate, but minor over-provisioning or optimization opportunities exist.
+      - REQUEST_CHANGES: Critical technical issues detected (inadequate sizing, outage risk, or policy violations).
+   b. "reasoning": String. Detailed explanation of findings for this deployment.
+   c. "target_resources": Nested JSON Object. Contains optimal requested constraints.
+      - LIMITS RULE: Change limits only when evidence shows the current limit will be exceeded. Evidence must be explicit and quantifiable (e.g., a confirmed allocation size, consistent limit saturation in metrics). When such evidence exists, set new limits to the evidenced value plus 20% headroom and state the evidence in the deployment reasoning. Without evidence, preserve limits exactly as-is.
+      - REQUESTS RULE: Adjust requests to match evidenced demand. When evidence shows demand exceeds current requests, you MUST raise requests to cover it. When evidence shows demand is consistently below current requests, optimize requests downward. Without evidence, preserve current requests.
+      - If deployment "decision" is "APPROVE", duplicate the original requests and limits.
 
 Expected JSON Structure:
 {
-  "decision": "YOUR_DECISION_HERE",
   "reasoning": "Overall summary of the resource adequacy findings...",
   "deployments": [
     {
       "deployment_name": "example-deployment",
+      "decision": "YOUR_DECISION_HERE",
       "reasoning": "Detailed explanation of CPU, Memory, and Storage recommendations for this deployment. Storage recommendations MUST align with the deployment manifest PVC schema.",
       "target_resources": {
         "requests": {
