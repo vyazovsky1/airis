@@ -5,7 +5,6 @@ Confidence levels:
 - Medium: a single explicit, quantifiable evidence source (e.g., a confirmed allocation size in code, or consistent single-snapshot data).
 - Low: indirect or inferred evidence only.
 
-Sizing decisions must be proportional to confidence:
-- Raising requests or limits requires at least medium confidence.
-- Lowering requests requires high confidence (risk of under-provisioning).
-- With low confidence, recommend "COMMENT" rather than "REQUEST_CHANGES" and describe what additional evidence is needed.
+Raising/Lowering requests or limits requires at least medium confidence.
+
+With Low confidence, recommend "COMMENT" rather than "REQUEST_CHANGES" and describe what additional evidence is needed.
