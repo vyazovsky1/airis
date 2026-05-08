@@ -19,7 +19,7 @@ load_dotenv()
 from core.logger import setup_logging, get_logger
 from core.config import config
 from agent.mcp_manager import MCPManager
-from agent.airis_agent import AirisAgent
+from agent.airis_agent import AirisAgent, AirisDecision
 
 setup_logging()
 logger = get_logger(__name__)
@@ -48,7 +48,6 @@ def print_banner(mcp: MCPManager) -> None:
         print(f"  Tools ({len(names)}): {', '.join(names)}")
     else:
         print("  Warning: no MCP tools loaded - check mcp_servers.json")
-    print("  Commands: --action pr | dry-run")
     print("=" * 60)
     print()
 
@@ -57,7 +56,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="AIRIS - AI Engine for Resource Intelligence & Sizing")
     parser.add_argument("--namespace", type=str, default="default",
                         help="Kubernetes namespace to analyze")
-    parser.add_argument("--pr",        type=str, help="Path to a Pull Request diff file to review")
+    parser.add_argument("--pr",        type=int, help="Pull Request number to review")
     parser.add_argument("--provider",  type=str, choices=["openai", "gemini"], default="openai",
                         help="AI provider to use")
     parser.add_argument("--model",     type=str, help="Model override (default: provider's thinking-tier model)")
@@ -66,12 +65,32 @@ def parse_args() -> argparse.Namespace:
                         default="dry-run",
                         help=(
                             "analyze  - inspect current K8s metrics, suggest fixes (no PR needed); "
-                            "review   - review PR impact on resources, post result to GitHub; "
-                            "dry-run  - review PR impact on resources, print result only"
+                            "review   - review PR diff, post result to GitHub, block merge on REQUEST_CHANGES; "
+                            "dry-run  - review PR diff, print result only"
                         ))
     parser.add_argument("--log-level", type=str, choices=["DEBUG", "INFO", "WARNING", "ERROR"],
                         default=config.LOG_LEVEL, help="Logging verbosity")
     return parser.parse_args()
+
+
+def _format_pr_comment(result: AirisDecision) -> str:
+    decision_icons = {"APPROVE": "✅", "COMMENT": "💬", "REQUEST_CHANGES": "❌"}
+    deployment_lines = []
+    for d in result.deployments:
+        icon = decision_icons.get(d.decision, "❓")
+        resources_json = d.target_resources.model_dump_json(indent=2)
+        deployment_lines.append(
+            f"#### {icon} `{d.deployment_name}` — {d.decision}\n"
+            f"{d.reasoning}\n"
+            f"<details><summary>Target resources</summary>\n\n```json\n{resources_json}\n```\n</details>"
+        )
+
+    overall_icon = "✅ All good" if all(d.decision != "REQUEST_CHANGES" for d in result.deployments) else "❌ Changes required"
+    return (
+        f"### AIRIS Resource Review — {overall_icon}\n\n"
+        f"{result.reasoning}\n\n"
+        + "\n\n---\n\n".join(deployment_lines)
+    )
 
 
 async def main() -> None:
@@ -82,7 +101,7 @@ async def main() -> None:
 
     _configure_log_levels()
 
-    logger.info("Running AIRIS in '%s' mode - namespace: %s, PR: %s",
+    logger.info("Running AIRIS in '%s' mode - namespace: %s, PR: #%s",
                 args.action, args.namespace, args.pr)
 
     servers_cfg = load_servers_config()
@@ -98,22 +117,15 @@ async def main() -> None:
                 result = await agent.run_k8s_analysis(namespace=args.namespace)
             else:  # review or dry-run
                 if not args.pr:
-                    logger.error("--pr <diff_file> is required for 'review' or 'dry-run' actions.")
+                    logger.error("--pr <number> is required for 'review' or 'dry-run' actions.")
                     sys.exit(1)
-                
-                diff_path = Path(args.pr)
-                if not diff_path.exists():
-                    logger.error("PR diff file not found: %s", args.pr)
-                    sys.exit(1)
-                
-                with open(diff_path, "r", encoding="utf-8") as f:
-                    pr_diff = f.read()
-                
+
+                from agent import github_utils
+                pr_diff = github_utils.get_pull_request_diff(args.pr)
                 result = await agent.run_pr_review(pr_diff=pr_diff, namespace=args.namespace)
         except Exception as exc:
             error = exc
 
-    # Handle errors after MCP cleanup completes cleanly
     if error:
         logger.error("Agent error: %s", error)
         sys.exit(1)
@@ -122,9 +134,18 @@ async def main() -> None:
         print("Agent failed to produce a decision.")
         sys.exit(1)
 
-    if args.action in ("dry-run", "analyze", "review"):
-        print("\n--- AIRIS Decision ---")
-        print(result.model_dump_json(indent=2))
+    print("\n--- AIRIS Decision ---")
+    print(result.model_dump_json(indent=2))
+
+    if args.action == "review":
+        from agent import github_utils
+        github_utils.create_pull_request_review(args.pr, _format_pr_comment(result))
+
+    # Exit 1 to block merge if any deployment requires changes
+    if args.action in ("review", "dry-run"):
+        if any(d.decision == "REQUEST_CHANGES" for d in result.deployments):
+            logger.warning("AIRIS: blocking merge — REQUEST_CHANGES detected in one or more deployments.")
+            sys.exit(1)
 
 
 if __name__ == "__main__":
