@@ -1,6 +1,11 @@
-Self-review your findings to establish a Statistical Confidence level.
-Ask yourself:
-1. Are there enough temporal snapshots (e.g., at least 3) to establish a trend? If not, lower your confidence and warn the user.
-2. Is the variance in usage extremely high? If so, recommend more conservative limits.
+Self-review your findings to establish a Statistical Confidence level based on the quality and quantity of evidence gathered.
 
-Do not enforce hard thresholds without adjusting for this confidence metric. If confidence is low, recommend a "COMMENT" rather than a strict "REQUEST_CHANGES".
+Confidence levels:
+- High: multiple corroborating evidence sources, or 3+ temporal snapshots showing a clear trend.
+- Medium: a single explicit, quantifiable evidence source (e.g., a confirmed allocation size in code, or consistent single-snapshot data).
+- Low: indirect or inferred evidence only.
+
+Sizing decisions must be proportional to confidence:
+- Raising requests or limits requires at least medium confidence.
+- Lowering requests requires high confidence (risk of under-provisioning).
+- With low confidence, recommend "COMMENT" rather than "REQUEST_CHANGES" and describe what additional evidence is needed.

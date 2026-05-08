@@ -1,0 +1,15 @@
+Analyze resource allocation by deriving evidence from two sources: the changed code and observed usage metrics.
+
+STEP 1 — Derive evidence from code changes:
+Inspect the changed code for explicit, quantifiable resource demand (e.g., hard-coded allocation sizes, CPU-intensive paths, large buffer declarations).
+When found, that value is evidence of the minimum demand floor. Carry this evidence forward into sizing decisions.
+
+STEP 2 — Derive evidence from usage metrics:
+Evaluate adequacy using the following Utilization Band rules (based on observed usage vs allocated Requests):
+- Under-provisioned: average usage > 90% of allocated requests. High risk of resource starvation.
+- Well-utilised: average usage between 40% and 90% of allocated requests.
+- Over-provisioned: average usage < 40% of allocated requests. Wasted capacity.
+
+You must consider:
+1. Application Archetype: Does it need headroom for spikes or stable limits?
+2. Change Risk Assessment: Reversibility and blast radius of the proposed changes.
