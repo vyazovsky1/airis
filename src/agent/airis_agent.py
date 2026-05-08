@@ -214,6 +214,7 @@ class AirisAgent:
 
                         logger.info("  >> %s(%s)", fn_name, fn_args)
                         tool_result = await self._mcp.call_tool(fn_name, fn_args)
+                        logger.info("  << %s result: %s", fn_name, (tool_result or "")[:500])
                         history.append({
                             "role": "tool",
                             "tool_call_id": tc.id,
