@@ -929,7 +929,47 @@ Push the workflow file and trigger a run — the job will appear as **In progres
 
 ---
 
-### 9.6 Scaling runners
+### 9.6 Grant AIRIS cluster access (RBAC)
+
+When the runner executes an AIRIS workflow step, AIRIS spawns the `kubernetes-mcp-server` as a subprocess **inside the runner pod**. The server detects it is running in-cluster and authenticates as the pod's Kubernetes service account (`system:serviceaccount:<namespace>:default`). By default that account has no permissions.
+
+Apply the RBAC manifest from the project root to grant the required read-only access:
+
+```bash
+kubectl apply -f k8s/airis-rbac.yaml
+```
+
+This creates a `ClusterRole` (`airis-runner`) that allows:
+
+| API group | Resources | Verbs |
+|---|---|---|
+| `metrics.k8s.io` | `pods`, `nodes` | `get`, `list` |
+| core (`""`) | `pods`, `nodes`, `namespaces`, `events`, `persistentvolumeclaims` | `get`, `list` |
+| `apps` | `deployments`, `replicasets`, `statefulsets`, `daemonsets` | `get`, `list` |
+
+And binds it to the `default` service account in the namespace where the runner pod runs.
+
+**Verify the runner's service account** (needed if you change the runner namespace):
+
+```bash
+kubectl get pod -l app.kubernetes.io/name=github-runner -A -o jsonpath='{range .items[*]}{.metadata.namespace}/{.spec.serviceAccountName}{"\n"}{end}'
+# guestbook/default  ← namespace/serviceaccount
+```
+
+If the output differs, edit `k8s/airis-rbac.yaml` and update the `namespace:` field in the `ClusterRoleBinding` to match.
+
+**Verify permissions are active:**
+
+```bash
+kubectl auth can-i list pods.metrics.k8s.io \
+  --as=system:serviceaccount:guestbook:default \
+  -n guestbook
+# yes
+```
+
+---
+
+### 9.7 Scaling runners
 
 To run multiple jobs in parallel, increase the replica count:
 
@@ -953,7 +993,7 @@ kubectl rollout restart deployment/github-runner -n guestbook
 
 ---
 
-### 9.7 Remove the runner
+### 9.8 Remove the runner
 
 ```bash
 helm uninstall gb-runner -n guestbook
