@@ -36,4 +36,5 @@ jobs:
             --namespace ${{ vars.K8S_NAMESPACE || 'default' }} \
             --action    review \
             --provider  openai \
+            --model gpt-5.2
             --log-level INFO
