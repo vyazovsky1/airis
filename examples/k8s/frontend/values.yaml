@@ -30,11 +30,11 @@ ingress:
 
 resources:
   requests:
-    cpu: 50m
-    memory: 64Mi
+    cpu: 500m
+    memory: 640Mi
   limits:
-    cpu: 100m
-    memory: 128Mi
+    cpu: 1000m
+    memory: 1280Mi
 
 metrics:
   enabled: true
