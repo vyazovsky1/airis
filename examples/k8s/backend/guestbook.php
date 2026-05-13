@@ -34,7 +34,19 @@ if (isset($_GET['cmd']) === true) {
       'port'   => 6379,
     ]);
 
-    $client->set('guestbook', $_GET['value']);
+    // Validate required parameters
+    if (!isset($_GET['to']) || !isset($_GET['message'])) {
+      print('{"error": "Missing \'to\' or \'message\' parameter"}');
+      exit;
+    }
+
+    // Store both fields as JSON
+    $data = [
+      'to' => $_GET['to'],
+      'message' => $_GET['message']
+    ];
+    
+    $client->set('guestbook', json_encode($data));
     print('{"message": "Updated"}');
   } else {
     $host = 'redis-follower';
