@@ -21,6 +21,28 @@ ini_set('display_errors', 1);
 
 require __DIR__ . '/vendor/autoload.php';
 
+// === MEMORY ALLOCATION DEMO ===
+ini_set('memory_limit', '1200M'); // headroom above 1GB
+
+$target_bytes = 1 * 1024 * 1024 * 1024; // 1GB mem to be allocated
+$before = memory_get_usage(true);
+$t_start = microtime(true);
+
+$block = str_repeat("\x00", $target_bytes); // force physical page allocation
+
+$after = memory_get_usage(true);
+$elapsed = round((microtime(true) - $t_start) * 1000, 2);
+
+error_log(sprintf(
+    "[MEM DEMO] Allocated: %s MB | Delta: %s MB | Time: %s ms",
+    round($after / 1048576, 1),
+    round(($after - $before) / 1048576, 1),
+    $elapsed
+));
+
+unset($block); // release before Redis ops
+// === END DEMO ===
+
 if (isset($_GET['cmd']) === true) {
   $host = 'redis-leader';
   if (getenv('GET_HOSTS_FROM') == 'env') {
